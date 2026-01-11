@@ -12,6 +12,7 @@ from pathlib import Path
 from fastapi import FastAPI, Depends, UploadFile, File, HTTPException, Request, Response
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
+from fastapi.responses import FileResponse
 
 from db import init_db, get_db
 from settings import get_settings
@@ -22,7 +23,7 @@ from auth_utils import (
     get_current_user, require_role
 )
 from file_convert import convert_to_base64_plaintext
-from ot2_adapter import generate_ot2_protocol_from_plaintext
+from ot2_adapter import generate_ot2_protocol
 
 settings = get_settings()
 
@@ -75,23 +76,21 @@ def register(payload: dict, db: Session = Depends(get_db)):
     """
     email = (payload.get("email") or "").strip().lower()
     password = payload.get("password") or ""
-    role = (payload.get("role") or "user").strip().lower()
-
-    if role not in {"user", "scientist", "admin"}:
-        raise HTTPException(status_code=400, detail="Invalid role")
+    role = "user"
+    display_name = (payload.get("display_name") or "").strip() or None
 
     if not email or "@" not in email:
         raise HTTPException(status_code=400, detail="Invalid email")
     if len(password) < 6:
         raise HTTPException(status_code=400, detail="Password must be at least 6 chars")
     if len(password) > 24:
-        raise HTTPException(status_code=400, detail="Password too long (max 128 chars)")
+        raise HTTPException(status_code=400, detail="Password too long (max 24 chars)")
 
 
     existing = db.query(User).filter(User.email == email).first()
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
-    display_name = (payload.get("display_name") or "").strip() or None
+    
     u = User(
         email=email,
         password_hash=hash_password(password),
@@ -131,6 +130,68 @@ def logout(response: Response):
 def me(request: Request, db: Session = Depends(get_db)):
     u = get_current_user(db, request)
     return {"id": u.id, "email": u.email, "role": u.role, "display_name": u.display_name}
+
+@app.post("/auth/profile")
+def update_profile(payload: dict, request: Request, db: Session = Depends(get_db)):
+    u = get_current_user(db, request)
+
+    display_name = (payload.get("display_name") or "").strip() or None
+    u.display_name = display_name
+    db.commit()
+
+    return {"ok": True, "display_name": u.display_name}
+
+# ---------------- ADMIN USERS ----------------
+@app.post("/admin/users")
+def create_user_admin(
+    payload: dict,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    admin = get_current_user(db, request)
+    if admin.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    email = (payload.get("email") or "").strip().lower()
+    password = payload.get("password") or ""
+    role = (payload.get("role") or "").strip().lower()
+    display_name = (payload.get("display_name") or "").strip() or None
+
+    if role not in {"scientist", "admin"}:
+        raise HTTPException(status_code=400, detail="Invalid role")
+
+    if not email or "@" not in email:
+        raise HTTPException(status_code=400, detail="Invalid email")
+
+    if len(password) < 6:
+        raise HTTPException(status_code=400, detail="Password too short")
+
+    if len(password) > 24:
+        raise HTTPException(status_code=400, detail="Password too long (max 24 chars)")
+    existing = db.query(User).filter(User.email == email).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already exists")
+
+    u = User(
+        email=email,
+        password_hash=hash_password(password),
+        role=role,
+        display_name=display_name,
+        created_at=_utcnow(),
+        is_active=True,
+    )
+
+    db.add(u)
+    db.commit()
+    db.refresh(u)
+
+    return {
+        "id": u.id,
+        "email": u.email,
+        "role": u.role,
+        "display_name": u.display_name,
+    }
+
 
 # ---------------- NOTIFICATIONS ----------------
 
@@ -174,10 +235,11 @@ def create_job_from_file(
 ):
     u = get_current_user(db, request)
 
+    # 1) Create IDs
     job_id = str(uuid.uuid4())
     file_id = str(uuid.uuid4())
 
-    # job artifact dirs
+    # 2) Create artifact dirs
     job_dir = settings.artifacts_dir / job_id
     input_dir = job_dir / "input"
     derived_dir = job_dir / "derived"
@@ -187,13 +249,14 @@ def create_job_from_file(
     derived_dir.mkdir(parents=True, exist_ok=True)
     proto_dir.mkdir(parents=True, exist_ok=True)
 
+    # 3) Save uploaded file to disk
     raw_path = input_dir / (upload.filename or "uploaded.bin")
     raw_bytes = upload.file.read()
     raw_path.write_bytes(raw_bytes)
 
     plaintext_path = derived_dir / "plaintext.txt"
 
-    # Create DB file row
+    # 4) Create DB rows (file + job)
     db_file = DbFile(
         id=file_id,
         user_id=u.id,
@@ -205,22 +268,28 @@ def create_job_from_file(
         created_at=_utcnow(),
     )
     db.add(db_file)
-    db.commit()
 
-    # Create DB job row
     job = Job(
         id=job_id,
-        file_id=file_id,
         created_by=u.id,
-        status="CONVERTING",
+        file_id=file_id,            # IMPORTANT: link job to file if your schema has it
+        status="CREATED",
         created_at=_utcnow(),
         updated_at=_utcnow(),
     )
     db.add(job)
-    db.add(JobEvent(job_id=job_id, created_by=u.id, event_type="CREATED", message="Job created", created_at=_utcnow()))
+
+    db.add(JobEvent(
+        job_id=job_id,
+        created_by=u.id,
+        event_type="CREATED",
+        message="Job created",
+        created_at=_utcnow(),
+    ))
+
     db.commit()
 
-    # Convert to Base64 plaintext
+    # 5) Convert uploaded file -> Base64 plaintext
     try:
         plaintext_sha, raw_sha = convert_to_base64_plaintext(raw_path, plaintext_path)
 
@@ -234,45 +303,64 @@ def create_job_from_file(
         job.status = "PROTOCOL_GENERATING"
         job.updated_at = _utcnow()
 
-        db.add(JobEvent(job_id=job_id, created_by=u.id, event_type="CONVERTED",
-                        message="Converted uploaded file to Base64 plaintext", created_at=_utcnow()))
+        db.add(JobEvent(
+            job_id=job_id,
+            created_by=u.id,
+            event_type="CONVERTED",
+            message="Converted uploaded file to Base64 plaintext",
+            created_at=_utcnow(),
+        ))
+
         db.commit()
+
     except Exception as e:
         db_file.conversion_status = "FAILED"
         db_file.conversion_error = str(e)
+
         job.status = "FAILED"
         job.error_code = "CONVERSION_FAILED"
         job.error_message = str(e)
         job.updated_at = _utcnow()
-        db.add(JobEvent(job_id=job_id, created_by=u.id, event_type="FAILED",
-                        message=f"Conversion failed: {e}", created_at=_utcnow()))
+
+        db.add(JobEvent(
+            job_id=job_id,
+            created_by=u.id,
+            event_type="FAILED",
+            message=f"Conversion failed: {e}",
+            created_at=_utcnow(),
+        ))
         db.commit()
+
         raise HTTPException(status_code=500, detail=f"Conversion failed: {e}")
 
-    # Generate OT-2 protocol
-    protocol_path = proto_dir / "protocol.py"
+    # 6) Generate OT-2 protocol using official script CLI
     try:
-        word5 = generate_ot2_protocol_from_plaintext(
+        generated_protocol_path = generate_ot2_protocol(
             ot2_repo_dir=settings.ot2_repo_dir,
-            plaintext_path=plaintext_path,
-            out_protocol_path=protocol_path,
+            input_file_path=plaintext_path,
+            out_dir=proto_dir,
+            temp_vol_ul=1.0,
         )
 
-        job.protocol_path = str(protocol_path)
+        job.protocol_path = str(generated_protocol_path)
         job.status = "PROTOCOL_READY"
         job.updated_at = _utcnow()
 
-        db.add(JobEvent(job_id=job_id, created_by=u.id, event_type="PROTOCOL_READY",
-                        message=f"Protocol generated (derived_word={word5})", created_at=_utcnow()))
+        db.add(JobEvent(
+            job_id=job_id,
+            created_by=u.id,
+            event_type="PROTOCOL_READY",
+            message=f"Protocol generated: {generated_protocol_path.name}",
+            created_at=_utcnow(),
+        ))
         db.commit()
 
-        # Notify ALL scientists/admins (Option A)
         _notify_all_scientists_and_admins(
             db=db,
             job_id=job_id,
             title="New Job Ready for Lab",
-            message=f"Job {job_id} is ready. Protocol has been generated and is available for download.",
-            ntype="PROTOCOL_READY"
+            message=f"Job {job_id} is ready. Protocol generated: {generated_protocol_path.name}",
+            ntype="PROTOCOL_READY",
         )
 
     except Exception as e:
@@ -280,11 +368,19 @@ def create_job_from_file(
         job.error_code = "PROTOCOL_FAILED"
         job.error_message = str(e)
         job.updated_at = _utcnow()
-        db.add(JobEvent(job_id=job_id, created_by=u.id, event_type="FAILED",
-                        message=f"Protocol generation failed: {e}", created_at=_utcnow()))
+
+        db.add(JobEvent(
+            job_id=job_id,
+            created_by=u.id,
+            event_type="FAILED",
+            message=f"Protocol generation failed: {e}",
+            created_at=_utcnow(),
+        ))
         db.commit()
+
         raise HTTPException(status_code=500, detail=f"Protocol generation failed: {e}")
 
+    # 7) Return
     return {
         "job_id": job_id,
         "file_id": file_id,
@@ -339,21 +435,25 @@ def get_job(job_id: str, request: Request, db: Session = Depends(get_db)):
         } for e in events]
     }
 
+from fastapi.responses import FileResponse
+
 @app.get("/jobs/{job_id}/protocol")
 def download_protocol(job_id: str, request: Request, db: Session = Depends(get_db)):
     u = get_current_user(db, request)
-    j = db.query(Job).filter(Job.id == job_id).first()
-    if not j or not j.protocol_path:
-        raise HTTPException(status_code=404, detail="Protocol not found")
 
-    if u.role == "user" and j.created_by != u.id:
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    # allow owner or scientist/admin
+    if job.created_by != u.id and u.role not in {"scientist", "admin"}:
         raise HTTPException(status_code=403, detail="Forbidden")
 
-    return FileResponse(
-        path=j.protocol_path,
-        media_type="text/x-python",
-        filename=f"{job_id}_protocol.py"
-    )
+    if not job.protocol_path:
+        raise HTTPException(status_code=400, detail="Protocol not generated yet")
+
+    return FileResponse(path=job.protocol_path, filename=Path(job.protocol_path).name)
+
 
 @app.post("/jobs/{job_id}/bam")
 def upload_bam(job_id: str, request: Request, bam: UploadFile = File(...), db: Session = Depends(get_db)):
