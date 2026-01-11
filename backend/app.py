@@ -4,7 +4,7 @@ import shutil
 from b2a_adapter import run_b2a_pipeline
 from compare_utils import compare_plaintext_vs_ascii
 
-
+from sqlalchemy import func, distinct
 import datetime as dt
 import uuid
 from pathlib import Path
@@ -91,11 +91,12 @@ def register(payload: dict, db: Session = Depends(get_db)):
     existing = db.query(User).filter(User.email == email).first()
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
-
+    display_name = (payload.get("display_name") or "").strip() or None
     u = User(
         email=email,
         password_hash=hash_password(password),
         role=role,
+        display_name=display_name,
         created_at=_utcnow(),
         is_active=True,
     )
@@ -119,7 +120,7 @@ def login(payload: dict, response: Response, db: Session = Depends(get_db)):
     u.last_login_at = _utcnow()
     db.commit()
 
-    return {"id": u.id, "email": u.email, "role": u.role}
+    return {"id": u.id, "email": u.email, "role": u.role, "display_name": u.display_name}
 
 @app.post("/auth/logout")
 def logout(response: Response):
@@ -129,7 +130,7 @@ def logout(response: Response):
 @app.get("/auth/me")
 def me(request: Request, db: Session = Depends(get_db)):
     u = get_current_user(db, request)
-    return {"id": u.id, "email": u.email, "role": u.role}
+    return {"id": u.id, "email": u.email, "role": u.role, "display_name": u.display_name}
 
 # ---------------- NOTIFICATIONS ----------------
 
@@ -444,3 +445,56 @@ def upload_bam(job_id: str, request: Request, bam: UploadFile = File(...), db: S
                         message=f"Decoding failed: {e}", created_at=_utcnow()))
         db.commit()
         raise HTTPException(status_code=500, detail=f"Decoding failed: {e}")
+    
+@app.get("/dashboard/summary")
+def dashboard_summary(request: Request, db: Session = Depends(get_db)):
+    u = get_current_user(db, request)
+
+    total_files = db.query(func.count(DbFile.id)).filter(DbFile.user_id == u.id).scalar() or 0
+    total_storage = db.query(func.coalesce(func.sum(DbFile.size_bytes), 0)).filter(DbFile.user_id == u.id).scalar() or 0
+
+    # "Retrievals" in POC = jobs that reached B2A output (ascii_path present)
+    total_retrievals = (
+        db.query(func.count(Job.id))
+        .filter(Job.created_by == u.id, Job.ascii_path.isnot(None))
+        .scalar()
+        or 0
+    )
+
+    return {
+        "display_name": u.display_name,
+        "total_files": int(total_files),
+        "total_storage_bytes": int(total_storage),
+        "total_retrievals": int(total_retrievals),
+    }
+
+@app.get("/dashboard/files")
+def dashboard_files(request: Request, db: Session = Depends(get_db)):
+    u = get_current_user(db, request)
+
+    files = (
+        db.query(DbFile)
+        .filter(DbFile.user_id == u.id)
+        .order_by(DbFile.created_at.desc())
+        .limit(200)
+        .all()
+    )
+
+    rows = []
+    for f in files:
+        latest_job = (
+            db.query(Job)
+            .filter(Job.file_id == f.id)
+            .order_by(Job.created_at.desc())
+            .first()
+        )
+        rows.append({
+            "file_id": f.id,
+            "file_name": f.original_filename or "uploaded.bin",
+            "uploaded_at": f.created_at.isoformat() if f.created_at else None,
+            "size_bytes": f.size_bytes or 0,
+            "status": latest_job.status if latest_job else f.conversion_status,
+            "job_id": latest_job.id if latest_job else None,
+        })
+
+    return rows

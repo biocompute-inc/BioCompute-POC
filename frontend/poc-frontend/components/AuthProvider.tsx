@@ -3,7 +3,8 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 
-type User = { id: number; email: string; role: "user" | "scientist" | "admin" };
+type User = { id: number; email: string; role: "user" | "scientist" | "admin"; display_name?: string | null };
+
 
 type AuthCtx = {
   user: User | null;
