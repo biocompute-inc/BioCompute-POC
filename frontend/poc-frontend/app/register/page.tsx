@@ -4,6 +4,7 @@
 import { useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 export default function RegisterPage() {
   const [name, setName] = useState("");
@@ -150,7 +151,7 @@ export default function RegisterPage() {
       {/* RIGHT PANEL */}
       <div className="hidden lg:flex items-center justify-center bg-[#EFE3F5]">
         <div className="relative h-[520px] w-[360px] rounded-xl overflow-hidden shadow-xl">
-          <img
+          <Image
             src="/dna-hero.png"
             alt="DNA visualization"
             className="h-full w-full object-cover"
