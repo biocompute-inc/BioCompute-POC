@@ -1,0 +1,6 @@
+[submodule "tools/B2A"]
+	path = tools/B2A
+	url = https://github.com/biocompute-inc/B2A.git
+[submodule "tools/OT2-BRICK-MIX-PROTOCOLS"]
+	path = tools/OT2-BRICK-MIX-PROTOCOLS
+	url = https://github.com/biocompute-inc/OT2-BRICK-MIX-PROTOCOLS.git
