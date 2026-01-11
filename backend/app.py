@@ -28,6 +28,17 @@ settings = get_settings()
 
 app = FastAPI(title="BioCompute POC Backend")
 
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
 @app.on_event("startup")
 def startup():
     settings.artifacts_dir.mkdir(parents=True, exist_ok=True)
