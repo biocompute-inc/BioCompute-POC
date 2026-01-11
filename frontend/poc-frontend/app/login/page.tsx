@@ -22,15 +22,23 @@ export default function LoginPage() {
         method: "POST",
         body: JSON.stringify({ email, password }),
       });
-      await refresh();
-      router.push("/dashboard");
+      const u = await refresh();
+      if (u.role === "scientist") {
+        router.push("/lab/inbox");
+      } 
+      if(u.role === "admin") {
+        router.push("/admin");
+      }
+      else {
+        router.push("/dashboard");
+      }
     } catch (err: any) {
       setError(err.message);
     }
   }
 
   return (
-    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2 bg-[#E6E6FA]">
+    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2 bg-[#eee6fa]">
       {/* LEFT PANEL */}
       <div className="flex items-center justify-center px-8">
         <div className="w-full max-w-md">

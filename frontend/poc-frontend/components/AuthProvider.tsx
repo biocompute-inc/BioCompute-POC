@@ -19,10 +19,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+
   async function refresh() {
     try {
       const me = await apiFetch("/auth/me", { method: "GET" });
       setUser(me);
+      return me;
     } catch {
       setUser(null);
     } finally {

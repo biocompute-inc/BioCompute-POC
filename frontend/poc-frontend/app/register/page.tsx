@@ -30,7 +30,7 @@ export default function RegisterPage() {
           name,
           email,
           password,
-          displayName
+          display_Name: displayName
         }),
       });
       router.push("/login");
