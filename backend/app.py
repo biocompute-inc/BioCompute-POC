@@ -84,6 +84,9 @@ def register(payload: dict, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Invalid email")
     if len(password) < 6:
         raise HTTPException(status_code=400, detail="Password must be at least 6 chars")
+    if len(password) > 24:
+        raise HTTPException(status_code=400, detail="Password too long (max 128 chars)")
+
 
     existing = db.query(User).filter(User.email == email).first()
     if existing:

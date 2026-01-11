@@ -20,6 +20,8 @@ function LabJobInner() {
   const [bam, setBam] = useState<File | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -31,6 +33,8 @@ function LabJobInner() {
         if (!cancelled) setJob(data);
       } catch (e: any) {
         if (!cancelled) setErr(e.message);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     })();
 
@@ -40,55 +44,143 @@ function LabJobInner() {
   }, [id]);
 
   async function uploadBam() {
-    if (!bam) return;
+    if (!bam || uploading) return;
+
     setErr(null);
     setMsg(null);
+    setUploading(true);
 
     const form = new FormData();
     form.append("bam", bam);
 
-    const res = await fetch(`http://localhost:8000/jobs/${id}/bam`, {
-      method: "POST",
-      credentials: "include",
-      body: form,
-    });
+    try {
+      const res = await fetch(`http://localhost:8000/jobs/${id}/bam`, {
+        method: "POST",
+        credentials: "include",
+        body: form,
+      });
 
-    if (!res.ok) {
-      setErr(await res.text());
-      return;
+      if (!res.ok) {
+        throw new Error(await res.text());
+      }
+
+      const data = await res.json();
+      setMsg(`Completed: ${data.status}`);
+    } catch (e: any) {
+      setErr(e.message);
+    } finally {
+      setUploading(false);
     }
-
-    const data = await res.json();
-    setMsg(`Completed: ${data.status}`);
   }
 
-  if (err) return <pre style={{ color: "crimson" }}>{err}</pre>;
-  if (!job) return <div style={{ padding: 16 }}>Loading…</div>;
+  if (loading) {
+    return (
+      <div className="max-w-5xl mx-auto px-6 py-8 text-sm text-gray-500">
+        Loading job…
+      </div>
+    );
+  }
+
+  if (err) {
+    return (
+      <div className="max-w-5xl mx-auto px-6 py-8">
+        <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          {err}
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div style={{ maxWidth: 900, margin: "24px auto", padding: 16 }}>
-      <h1>Lab Job {job.id}</h1>
-      <div>Status: {job.status}</div>
+    <div className="max-w-5xl mx-auto px-6 py-8">
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-semibold tracking-tight">
+          Lab Job {job.id}
+        </h1>
+        <div className="mt-2 inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700">
+          Status: {job.status}
+        </div>
+      </div>
 
-      {job.protocol_download_url && (
-        <p>
-          Protocol:{" "}
-          <a href={`http://127.0.0.1:8000${job.protocol_download_url}`} target="_blank">
-            Download
+      {/* Job info */}
+      <div className="mb-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-semibold mb-3">
+          Job details
+        </h2>
+
+        {job.protocol_download_url ? (
+          <a
+            href={`http://127.0.0.1:8000${job.protocol_download_url}`}
+            target="_blank"
+            className="inline-flex items-center text-sm font-medium text-black hover:underline"
+          >
+            Download protocol →
           </a>
+        ) : (
+          <p className="text-sm text-gray-500">
+            No protocol attached.
+          </p>
+        )}
+      </div>
+
+      {/* Upload BAM */}
+      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-semibold mb-2">
+          Upload BAM
+        </h2>
+        <p className="text-sm text-gray-500 mb-4">
+          Upload the BAM file to decode and complete this job.
         </p>
-      )}
 
-      <h2>Upload BAM</h2>
-      <input type="file" onChange={(e) => setBam(e.target.files?.[0] || null)} />
-      <button onClick={uploadBam} disabled={!bam}>
-        Upload & Decode
-      </button>
+        <label
+          htmlFor="bam"
+          className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 px-6 py-8 text-center hover:border-gray-400"
+        >
+          <input
+            id="bam"
+            type="file"
+            className="hidden"
+            onChange={(e) => setBam(e.target.files?.[0] || null)}
+          />
 
-      {msg && <pre style={{ color: "green" }}>{msg}</pre>}
-      {job.error_message && <pre style={{ color: "crimson" }}>{job.error_message}</pre>}
+          <div className="text-sm font-medium text-gray-700">
+            {bam ? bam.name : "Click to upload BAM file"}
+          </div>
+          <div className="mt-1 text-xs text-gray-400">
+            .bam format expected
+          </div>
+        </label>
 
-      <a href="/lab/inbox">Back</a>
+        <div className="mt-6 flex items-center gap-4">
+          <button
+            onClick={uploadBam}
+            disabled={!bam || uploading}
+            className="rounded-md bg-black px-5 py-2 text-sm font-medium text-white disabled:opacity-50 hover:bg-gray-800"
+          >
+            {uploading ? "Uploading…" : "Upload & Decode"}
+          </button>
+
+          <a
+            href="/lab/inbox"
+            className="text-sm font-medium text-gray-500 hover:underline"
+          >
+            Back to inbox
+          </a>
+        </div>
+
+        {msg && (
+          <div className="mt-4 rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-700">
+            {msg}
+          </div>
+        )}
+
+        {job.error_message && (
+          <div className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700 whitespace-pre-wrap">
+            {job.error_message}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

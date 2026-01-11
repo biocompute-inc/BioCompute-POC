@@ -16,6 +16,7 @@ export default function LabInboxPage() {
 function InboxInner() {
   const [items, setItems] = useState<any[]>([]);
   const [err, setErr] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -27,6 +28,8 @@ function InboxInner() {
         if (!cancelled) setItems(data);
       } catch (e: any) {
         if (!cancelled) setErr(e.message);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     })();
 
@@ -36,18 +39,77 @@ function InboxInner() {
   }, []);
 
   return (
-    <div style={{ maxWidth: 900, margin: "24px auto", padding: 16 }}>
-      <h1>Lab Inbox</h1>
-      {err && <pre style={{ color: "crimson" }}>{err}</pre>}
-      <ul>
+    <div className="max-w-5xl mx-auto px-6 py-8">
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-semibold tracking-tight">
+          Lab Inbox
+        </h1>
+        <p className="mt-1 text-sm text-gray-500">
+          Signals, alerts, and things that require your attention.
+        </p>
+      </div>
+
+      {/* Error */}
+      {err && (
+        <div className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          {err}
+        </div>
+      )}
+
+      {/* Loading */}
+      {loading && (
+        <div className="text-sm text-gray-500">
+          Loading notifications…
+        </div>
+      )}
+
+      {/* Empty */}
+      {!loading && items.length === 0 && !err && (
+        <div className="rounded-lg border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500">
+          Inbox is empty. Either things are going well or nothing has started yet.
+        </div>
+      )}
+
+      {/* Inbox items */}
+      <div className="space-y-3">
         {items.map((n) => (
-          <li key={n.id}>
-            <b>{n.type}</b> — {n.title} —{" "}
-            {n.job_id && <a href={`/lab/jobs/${n.job_id}`}>Open job</a>}
-          </li>
+          <div
+            key={n.id}
+            className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 mb-1">
+                  {n.type}
+                </div>
+                <div className="font-medium text-gray-900">
+                  {n.title}
+                </div>
+              </div>
+
+              {n.job_id && (
+                <a
+                  href={`/lab/jobs/${n.job_id}`}
+                  className="text-sm font-medium text-black hover:underline whitespace-nowrap"
+                >
+                  Open job →
+                </a>
+              )}
+            </div>
+          </div>
         ))}
-      </ul>
-      <a href="/dashboard">Back</a>
+      </div>
+
+      {/* Footer */}
+      <div className="mt-8">
+        <a
+          href="/dashboard"
+          className="text-sm font-medium text-gray-500 hover:underline"
+        >
+          ← Back to dashboard
+        </a>
+      </div>
     </div>
   );
 }
