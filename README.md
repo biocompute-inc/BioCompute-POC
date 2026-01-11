@@ -39,13 +39,20 @@ frontend/
 tools/
 artifacts/ # ignored by git
 ```
-
+## Clone Repo
+```bash
+git clone https://github.com/biocompute-inc/BioCompute-POC.git
+cd BioCompute-POC
+git submodule update --init --recursive
+```
+- External lab automation and decoding tools are included as pinned Git submodules to ensure reproducibility.
 
 ## Setup (Local)
 ```bash
-git clone <repo>
+git clone https://github.com/biocompute-inc/BioCompute-POC.git
 cd biocompute-poc/backend
 python -m venv venv
 .\venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 uvicorn app:app --reload
+```
