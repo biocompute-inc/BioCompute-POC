@@ -5,7 +5,7 @@ import { RequireAuth } from "@/components/RequireAuth";
 import { useAuth } from "@/components/AuthProvider";
 import { apiFetch } from "@/lib/api";
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+
 
 function formatBytes(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -32,7 +32,7 @@ function DashboardInner() {
   const [files, setFiles] = useState<any[]>([]);
   const [err, setErr] = useState<string | null>(null);
 
-  const router = useRouter();
+  //const router = useRouter();
   const greetingName = useMemo(() => {
     return summary?.display_name || user?.display_name || user?.email || "User";
   }, [summary, user]);
@@ -130,16 +130,7 @@ function DashboardInner() {
             )}
           </tbody>
         </table>
-      </div>
-      {user?.role === "admin" && (
-           <button
-              type="button"
-              onClick={() => router.push("/admin")}
-              className="text-sm text-slate-500 hover:underline"
-            >
-              Create user
-            </button>     
-          )}
+      </div>       
     </div>
   );
 }

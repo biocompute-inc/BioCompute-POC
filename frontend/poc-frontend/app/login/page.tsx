@@ -7,6 +7,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 
+
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -14,6 +15,7 @@ export default function LoginPage() {
   const { refresh } = useAuth();
   const router = useRouter();
 
+  
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -22,12 +24,12 @@ export default function LoginPage() {
         method: "POST",
         body: JSON.stringify({ email, password }),
       });
-      const u = await refresh();
+      const u = (await refresh()) as any;  
       if (u.role === "scientist") {
-        router.push("/lab/inbox");
+        router.push("/scientist/jobs");
       } 
-      if(u.role === "admin") {
-        router.push("/admin");
+      else if(u.role === "admin") {
+        router.push("/admin/dashboard");
       }
       else {
         router.push("/dashboard");
