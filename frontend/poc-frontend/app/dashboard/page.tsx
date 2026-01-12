@@ -34,9 +34,8 @@ function DashboardInner() {
 
   //const router = useRouter();
   const greetingName = useMemo(() => {
-    return summary?.display_name || user?.display_name || user?.email || "User";
-  }, [summary, user]);
-
+      return user?.display_name || user?.email || "User";
+    }, [user]);
   useEffect(() => {
     let cancelled = false;
 

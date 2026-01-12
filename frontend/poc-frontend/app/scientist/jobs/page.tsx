@@ -58,7 +58,7 @@ function ScientistJobsInner() {
     <div style={{ maxWidth: 1100, margin: "24px auto", padding: 16 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h1>Hi {greetingName}!</h1>
-        <a href="/dashboard">Back</a>
+        <a href="/lab/inbox">Back</a>
       </div>
 
       {err && <pre style={{ color: "crimson", whiteSpace: "pre-wrap" }}>{err}</pre>}

@@ -152,10 +152,13 @@ export default function RegisterPage() {
       <div className="hidden lg:flex items-center justify-center bg-[#EFE3F5]">
         <div className="relative h-[520px] w-[360px] rounded-xl overflow-hidden shadow-xl">
           <Image
-            src="/dna-hero.png"
-            alt="DNA visualization"
-            className="h-full w-full object-cover"
-          />
+              className="dark:invert"
+              src="/next.svg"
+              alt="Next.js logo"
+              width={100}
+              height={20}
+              priority
+            />
         </div>
       </div>
     </div>
