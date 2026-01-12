@@ -38,6 +38,79 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+from sqlalchemy import func
+
+ACTIVE_JOB_STATUSES = {"PROTOCOL_READY", "BAM_UPLOADED", "DECODING"}
+
+def _choose_scientist_least_loaded(db: Session) -> User | None:
+    scientists = db.query(User).filter(User.role == "scientist", User.is_active == True).all()  # noqa: E712
+    if not scientists:
+        return None
+
+    # Count active assigned jobs per scientist
+    rows = (
+        db.query(Job.assigned_to, func.count(Job.id))
+        .filter(Job.assigned_to.isnot(None))
+        .filter(Job.status.in_(list(ACTIVE_JOB_STATUSES)))
+        .group_by(Job.assigned_to)
+        .all()
+    )
+    counts = {sid: cnt for (sid, cnt) in rows}
+
+    # Pick the scientist with minimum active jobs
+    return min(scientists, key=lambda s: counts.get(s.id, 0))
+
+def _auto_assign_job(db: Session, job: Job, actor_user_id: int):
+    """
+    Assign job to a scientist automatically once protocol is ready.
+    """
+    if job.assigned_to is not None:
+        return  # already assigned
+
+    chosen = _choose_scientist_least_loaded(db)
+    if chosen is None:
+        # No scientists exist: log event and keep job unassigned
+        db.add(JobEvent(
+            job_id=job.id,
+            created_by=actor_user_id,
+            event_type="ASSIGNMENT_SKIPPED",
+            message="No active scientist accounts found; job not assigned",
+            created_at=_utcnow(),
+        ))
+        db.commit()
+        return
+
+    job.assigned_to = chosen.id
+    job.claimed_at = _utcnow()  # optional: record assignment time
+    job.updated_at = _utcnow()
+
+    db.add(JobEvent(
+        job_id=job.id,
+        created_by=actor_user_id,
+        event_type="ASSIGNED",
+        message=f"Auto-assigned to scientist {chosen.email}",
+        created_at=_utcnow(),
+    ))
+
+    db.add(Notification(
+        recipient_user_id=chosen.id,
+        job_id=job.id,
+        type="JOB_ASSIGNED",
+        title="New job assigned",
+        message=f"Job {job.id} is ready. Download protocol and run sequencing, then upload BAM.",
+        is_read=False,
+        created_at=_utcnow(),
+    ))
+
+    db.commit()
+
+def _mark_job_done_free_scientist(db: Session, job: Job):
+    """
+    When job completes, scientist is automatically freed because BUSY/FREE is computed.
+    No DB change needed except job status already updated.
+    """
+    job.updated_at = _utcnow()
+    db.commit()
 
 
 @app.on_event("startup")
@@ -190,6 +263,93 @@ def create_user_admin(
         "email": u.email,
         "role": u.role,
         "display_name": u.display_name,
+    }
+
+@app.get("/admin/analytics/users")
+def admin_users_analytics(request: Request, db: Session = Depends(get_db)):
+    admin = get_current_user(db, request)
+    if admin.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    file_rows = (
+        db.query(
+            DbFile.user_id.label("user_id"),
+            func.count(DbFile.id).label("total_files"),
+            func.coalesce(func.sum(DbFile.size_bytes), 0).label("total_storage"),
+        )
+        .group_by(DbFile.user_id)
+        .all()
+    )
+    file_map = {r.user_id: {"total_files": int(r.total_files), "total_storage": int(r.total_storage)} for r in file_rows}
+
+    retrieval_rows = (
+        db.query(Job.created_by.label("user_id"), func.count(Job.id).label("total_retrievals"))
+        .filter(Job.ascii_path.isnot(None))
+        .group_by(Job.created_by)
+        .all()
+    )
+    retrieval_map = {r.user_id: int(r.total_retrievals) for r in retrieval_rows}
+
+    users = db.query(User).filter(User.role == "user").order_by(User.created_at.desc()).all()
+
+    out = []
+    for u in users:
+        agg = file_map.get(u.id, {"total_files": 0, "total_storage": 0})
+        out.append({
+            "user_id": u.id,
+            "email": u.email,
+            "display_name": u.display_name,
+            "total_files": agg["total_files"],
+            "total_storage_bytes": agg["total_storage"],
+            "total_retrievals": retrieval_map.get(u.id, 0),
+        })
+    return out
+
+@app.get("/admin/analytics/staff")
+def admin_staff_analytics(request: Request, db: Session = Depends(get_db)):
+    admin = get_current_user(db, request)
+    if admin.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    # active assigned jobs per scientist
+    active_rows = (
+        db.query(Job.assigned_to.label("sid"), func.count(Job.id).label("active_jobs"))
+        .filter(Job.assigned_to.isnot(None))
+        .filter(Job.status.in_(list(ACTIVE_JOB_STATUSES)))
+        .group_by(Job.assigned_to)
+        .all()
+    )
+    active_map = {r.sid: int(r.active_jobs) for r in active_rows}
+
+    staff = db.query(User).filter(User.role.in_(["scientist", "admin"]), User.is_active == True).all()  # noqa: E712
+
+    out = []
+    for s in staff:
+        active_jobs = active_map.get(s.id, 0)
+        status = "BUSY" if (s.role == "scientist" and active_jobs > 0) else "FREE"
+        if s.role == "admin":
+            status = "N/A"
+        out.append({
+            "user_id": s.id,
+            "email": s.email,
+            "display_name": s.display_name,
+            "role": s.role,
+            "status": status,
+            "active_jobs": active_jobs if s.role == "scientist" else None,
+        })
+
+    # summary counts for dashboard cards
+    total_scientists = len([x for x in out if x["role"] == "scientist"])
+    busy_scientists = len([x for x in out if x["role"] == "scientist" and x["status"] == "BUSY"])
+    free_scientists = len([x for x in out if x["role"] == "scientist" and x["status"] == "FREE"])
+
+    return {
+        "summary": {
+            "total_scientists": total_scientists,
+            "busy_scientists": busy_scientists,
+            "free_scientists": free_scientists,
+        },
+        "staff": out,
     }
 
 
@@ -354,14 +514,15 @@ def create_job_from_file(
             created_at=_utcnow(),
         ))
         db.commit()
+        _auto_assign_job(db, job=job, actor_user_id=u.id)
 
-        _notify_all_scientists_and_admins(
-            db=db,
-            job_id=job_id,
-            title="New Job Ready for Lab",
-            message=f"Job {job_id} is ready. Protocol generated: {generated_protocol_path.name}",
-            ntype="PROTOCOL_READY",
-        )
+        # _notify_all_scientists_and_admins(
+        #     db=db,
+        #     job_id=job_id,
+        #     title="New Job Ready for Lab",
+        #     message=f"Job {job_id} is ready. Protocol generated: {generated_protocol_path.name}",
+        #     ntype="PROTOCOL_READY",
+        # )
 
     except Exception as e:
         job.status = "FAILED"
@@ -514,6 +675,7 @@ def upload_bam(job_id: str, request: Request, bam: UploadFile = File(...), db: S
         db.add(JobEvent(job_id=job_id, created_by=u.id, event_type="COMPLETED" if j.match else "FAILED",
                         message="Job comparison finished", created_at=_utcnow()))
         db.commit()
+        _mark_job_done_free_scientist(db, j)
 
         # Notify the job owner
         owner = db.query(User).filter(User.id == j.created_by).first()
@@ -598,3 +760,29 @@ def dashboard_files(request: Request, db: Session = Depends(get_db)):
         })
 
     return rows
+
+@app.get("/scientist/jobs")
+def scientist_jobs(request: Request, db: Session = Depends(get_db)):
+    s = get_current_user(db, request)
+    if s.role not in {"scientist", "admin"}:
+        raise HTTPException(status_code=403, detail="Scientist/admin access required")
+
+    jobs = (
+        db.query(Job)
+        .filter(Job.assigned_to == s.id)
+        .order_by(Job.created_at.desc())
+        .limit(200)
+        .all()
+    )
+
+    out = []
+    for j in jobs:
+        out.append({
+            "id": j.id,
+            "status": j.status,
+            "created_at": j.created_at.isoformat() if j.created_at else None,
+            "file_id": j.file_id,
+            "protocol_download_url": f"/jobs/{j.id}/protocol" if j.protocol_path else None,
+            "match": j.match,
+        })
+    return out
