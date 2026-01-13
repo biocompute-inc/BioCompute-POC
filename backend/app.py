@@ -650,7 +650,9 @@ def upload_bam(job_id: str, request: Request, bam: UploadFile = File(...), db: S
             git_bash_path=settings.git_bash_path,
             b2a_repo_dir=settings.b2a_repo_dir,
             bam_path=bam_path,
+            reference_fasta=settings.b2a_reference_fasta,
             out_dir=b2a_dir,
+            bitwidth=settings.b2a_bitwidth,
         )
 
         j.ascii_path = str(ascii_out)

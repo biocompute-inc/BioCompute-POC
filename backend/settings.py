@@ -14,6 +14,8 @@ class Settings:
     session_secret: str
     git_bash_path: Path
     db_url: str
+    b2a_reference_fasta = Path(os.getenv("B2A_REFERENCE_FASTA", ""))
+    b2a_bitwidth = int(os.getenv("B2A_BITWIDTH", "8"))
 
 def get_settings() -> Settings:
     ot2_repo = Path(os.getenv("OT2_REPO_DIR", "../tools/OT2-BRICK-MIX-PROTOCOLS")).resolve()

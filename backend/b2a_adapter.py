@@ -1,81 +1,64 @@
 from __future__ import annotations
 from pathlib import Path
-import shutil
 import subprocess
-import time
 
 def run_b2a_pipeline(
     git_bash_path: Path,
     b2a_repo_dir: Path,
     bam_path: Path,
+    reference_fasta: Path,
     out_dir: Path,
+    bitwidth: int = 8,
 ) -> Path:
     """
-    Runs B2A run_pipeline.sh using Git Bash.
-    Copies BAM into B2A repo root (per common bash-script expectations),
-    then collects the newest ASCII-like output into out_dir.
-
-    Returns: path to detected ASCII output file.
+    Runs B2A run_pipeline.sh <bam> <ref_fasta> [bitwidth]
+    Writes logs to out_dir and returns the produced ASCII output path.
     """
-    if not git_bash_path.exists():
-        raise FileNotFoundError(f"Git Bash not found at: {git_bash_path}")
-
-    run_script = b2a_repo_dir / "run_pipeline.sh"
-    if not run_script.exists():
-        raise FileNotFoundError(f"B2A run_pipeline.sh not found: {run_script}")
-
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    # Copy BAM into B2A repo root for simplest compatibility
-    work_bam = b2a_repo_dir / bam_path.name
-    shutil.copy2(bam_path, work_bam)
+    script = b2a_repo_dir / "run_pipeline.sh"
+    if not script.exists():
+        raise FileNotFoundError(f"B2A script not found: {script}")
 
-    before = time.time()
+    if not reference_fasta.exists():
+        raise FileNotFoundError(f"Reference FASTA not found: {reference_fasta}")
 
-    # Run: bash run_pipeline.sh
-    proc = subprocess.run(
-        [str(git_bash_path), str(run_script)],
-        cwd=str(b2a_repo_dir),
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+    stdout_log = out_dir / "b2a_stdout.log"
+    stderr_log = out_dir / "b2a_stderr.log"
 
-    # Always save logs for debugging
-    (out_dir / "b2a_stdout.log").write_text(proc.stdout or "", encoding="utf-8")
-    (out_dir / "b2a_stderr.log").write_text(proc.stderr or "", encoding="utf-8")
+    bam_path = bam_path.resolve()
+    reference_fasta = reference_fasta.resolve()
+    b2a_repo_dir = b2a_repo_dir.resolve()
+
+    cmd = [
+        str(git_bash_path),
+        "-lc",
+        f'cd "{b2a_repo_dir}" && bash "{script}" "{bam_path}" "{reference_fasta}" "{bitwidth}"'
+    ]
+
+    proc = subprocess.run(cmd, capture_output=True, text=True)
+
+    stdout_log.write_text(proc.stdout or "")
+    stderr_log.write_text(proc.stderr or "")
 
     if proc.returncode != 0:
-        raise RuntimeError("B2A pipeline failed. Check b2a_stdout.log / b2a_stderr.log in artifacts.")
+        raise RuntimeError(
+            "B2A pipeline failed.\n"
+            f"cmd: {cmd}\n"
+            f"stdout(log): {stdout_log}\n"
+            f"stderr(log): {stderr_log}\n"
+            f"stderr tail:\n{(proc.stderr or '')[-1200:]}"
+        )
 
-    # Heuristic: find newest output file created after run (excluding bam)
-    candidates = []
-    for f in b2a_repo_dir.rglob("*"):
-        if not f.is_file():
-            continue
-        if f.name == work_bam.name:
-            continue
-        if f.stat().st_mtime >= before - 1:
-            candidates.append(f)
+    # Find produced ASCII output in out_dir (adjust if your pipeline names it differently)
+    candidates = sorted(out_dir.glob("*.txt"), key=lambda p: p.stat().st_mtime, reverse=True)
+    if not candidates:
+        candidates = sorted(out_dir.glob("*.ascii"), key=lambda p: p.stat().st_mtime, reverse=True)
 
-    # Prefer text-like outputs
-    preferred_ext = {".txt", ".tsv", ".csv", ".out"}
-    preferred = [c for c in candidates if c.suffix.lower() in preferred_ext]
-    preferred.sort(key=lambda p: p.stat().st_mtime, reverse=True)
-    candidates.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+    if not candidates:
+        raise RuntimeError(
+            f"B2A finished but no ASCII output found in {out_dir}. "
+            f"Check logs: {stdout_log} {stderr_log}"
+        )
 
-    chosen = preferred[0] if preferred else (candidates[0] if candidates else None)
-    if chosen is None:
-        raise RuntimeError("B2A ran but no output file was detected. Check logs.")
-
-    # Copy chosen output to artifacts for job
-    ascii_out = out_dir / chosen.name
-    shutil.copy2(chosen, ascii_out)
-
-    # Cleanup copied bam
-    try:
-        work_bam.unlink()
-    except OSError:
-        pass
-
-    return ascii_out
+    return candidates[0]
