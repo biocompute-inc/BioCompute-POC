@@ -24,6 +24,11 @@ from auth_utils import (
 )
 from file_convert import convert_to_base64_plaintext
 from ot2_adapter import generate_ot2_protocol
+from byte_text_codec import raw_bytes_to_decimal_text
+from b2a_normalize import write_recovered_file, B2ANormalizationError
+from byte_compare import compare_files_bytewise
+
+
 
 settings = get_settings()
 
@@ -414,7 +419,7 @@ def create_job_from_file(
     raw_bytes = upload.file.read()
     raw_path.write_bytes(raw_bytes)
 
-    plaintext_path = derived_dir / "plaintext.txt"
+    plaintext_path = derived_dir / "plaintext_decimal.txt"
 
     # 4) Create DB rows (file + job)
     db_file = DbFile(
@@ -449,13 +454,12 @@ def create_job_from_file(
 
     db.commit()
 
-    # 5) Convert uploaded file -> Base64 plaintext
+    # 5) Convert uploaded file -> decimal-per-line plaintext (NO Base64, NO hashes)
     try:
-        plaintext_sha, raw_sha = convert_to_base64_plaintext(raw_path, plaintext_path)
+        raw_bytes_to_decimal_text(raw_path, plaintext_path)
 
-        db_file.sha256 = raw_sha
+        # store plaintext path only (no sha, no checksums)
         db_file.plaintext_path = str(plaintext_path)
-        db_file.plaintext_sha256 = plaintext_sha
         db_file.conversion_status = "SUCCESS"
         db_file.conversion_error = None
 
@@ -467,7 +471,7 @@ def create_job_from_file(
             job_id=job_id,
             created_by=u.id,
             event_type="CONVERTED",
-            message="Converted uploaded file to Base64 plaintext",
+            message="Converted uploaded file to decimal-per-line plaintext",
             created_at=_utcnow(),
         ))
 
@@ -492,6 +496,7 @@ def create_job_from_file(
         db.commit()
 
         raise HTTPException(status_code=500, detail=f"Conversion failed: {e}")
+
 
     # 6) Generate OT-2 protocol using official script CLI
     try:
@@ -583,6 +588,7 @@ def get_job(job_id: str, request: Request, db: Session = Depends(get_db)):
         "id": j.id,
         "status": j.status,
         "created_by": j.created_by,
+        "assigned_to": j.assigned_to,
         "plaintext_path": j.plaintext_path,
         "protocol_download_url": f"/jobs/{j.id}/protocol" if j.protocol_path else None,
         "error_code": j.error_code,
@@ -709,6 +715,54 @@ def upload_bam(job_id: str, request: Request, bam: UploadFile = File(...), db: S
                         message=f"Decoding failed: {e}", created_at=_utcnow()))
         db.commit()
         raise HTTPException(status_code=500, detail=f"Decoding failed: {e}")
+
+@app.post("/jobs/{job_id}/complete")
+def mark_job_complete(job_id: str, request: Request, db: Session = Depends(get_db)):
+    u = get_current_user(db, request)
+    require_role(u, {"scientist", "admin"})
+
+    j = db.query(Job).filter(Job.id == job_id).first()
+    if not j:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    if u.role == "scientist" and j.assigned_to != u.id:
+        raise HTTPException(status_code=403, detail="Not assigned to this job")
+
+    if j.status in {"COMPLETED", "FAILED"}:
+        return {"job_id": j.id, "status": j.status}
+
+    if j.status not in {"PROTOCOL_READY", "BAM_UPLOADED"}:
+        raise HTTPException(status_code=400, detail="Job is not ready to be marked complete")
+
+    j.status = "COMPLETED"
+    j.match = None
+    j.error_code = None
+    j.error_message = None
+    j.updated_at = _utcnow()
+
+    db.add(JobEvent(
+        job_id=job_id,
+        created_by=u.id,
+        event_type="COMPLETED_MANUAL",
+        message="Job marked completed by scientist",
+        created_at=_utcnow(),
+    ))
+    db.commit()
+
+    owner = db.query(User).filter(User.id == j.created_by).first()
+    if owner:
+        db.add(Notification(
+            recipient_user_id=owner.id,
+            job_id=job_id,
+            type="JOB_COMPLETED",
+            title="Job completed",
+            message=f"Job {job_id} was marked completed by the lab.",
+            is_read=False,
+            created_at=_utcnow(),
+        ))
+        db.commit()
+
+    return {"job_id": j.id, "status": j.status}
     
 @app.get("/dashboard/summary")
 def dashboard_summary(request: Request, db: Session = Depends(get_db)):

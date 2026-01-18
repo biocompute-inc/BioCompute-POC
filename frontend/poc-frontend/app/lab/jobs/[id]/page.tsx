@@ -2,6 +2,7 @@
 "use client";
 
 import { RequireRole } from "@/components/RequireAuth";
+import { useAuth } from "@/components/AuthProvider";
 import { apiFetch } from "@/lib/api";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -16,12 +17,14 @@ export default function LabJobPage() {
 
 function LabJobInner() {
   const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
   const [job, setJob] = useState<any>(null);
   const [bam, setBam] = useState<File | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [completing, setCompleting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -70,6 +73,26 @@ function LabJobInner() {
       setErr(e.message);
     } finally {
       setUploading(false);
+    }
+  }
+
+  async function markCompleted() {
+    if (completing) return;
+    setErr(null);
+    setMsg(null);
+    setCompleting(true);
+
+    try {
+      const data = await apiFetch(`/jobs/${id}/complete`, {
+        method: "POST",
+        body: JSON.stringify({}),
+      });
+      setJob((prev: any) => (prev ? { ...prev, status: data.status } : prev));
+      setMsg("Job marked completed.");
+    } catch (e: any) {
+      setErr(e.message);
+    } finally {
+      setCompleting(false);
     }
   }
 
@@ -168,6 +191,25 @@ function LabJobInner() {
             Back to inbox
           </a>
         </div>
+
+        {user?.role === "scientist" &&
+          job?.assigned_to === user.id &&
+          job?.status !== "COMPLETED" &&
+          job?.status !== "FAILED" &&
+          job?.status !== "DECODING" && (
+            <div className="mt-6 flex items-center gap-4">
+              <button
+                onClick={markCompleted}
+                disabled={completing}
+                className="rounded-md border border-gray-300 px-5 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50 disabled:opacity-50"
+              >
+                {completing ? "Marking..." : "Mark completed"}
+              </button>
+              <span className="text-xs text-gray-500">
+                Use if the lab work is done without BAM upload.
+              </span>
+            </div>
+          )}
 
         {msg && (
           <div className="mt-4 rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-700">

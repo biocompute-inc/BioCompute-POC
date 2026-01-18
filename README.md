@@ -56,3 +56,8 @@ python -m venv venv
 pip install -r requirements.txt
 uvicorn app:app --reload
 ```
+
+## Next Steps
+- Create a `.env` file in `backend/` to override paths (e.g., `OT2_REPO_DIR`, `B2A_REPO_DIR`, `ARTIFACTS_DIR`, `B2A_REFERENCE_FASTA`) if your tools are not in the default locations.
+- Initialize submodules if you skipped it (`git submodule update --init --recursive`).
+- Start the frontend in `frontend/poc-frontend` and point it at the backend (`http://localhost:3000`).

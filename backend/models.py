@@ -74,6 +74,11 @@ class Job(Base):
 
     file = relationship("File")
     creator = relationship("User", foreign_keys=[created_by])
+    recovered_raw_path = Column(String, nullable=True)
+    recovered_size_bytes = Column(Integer, nullable=True)
+    first_mismatch_offset = Column(Integer, nullable=True)
+    original_size_bytes = Column(Integer, nullable=True)  # optional but useful
+
 
 class Notification(Base):
     __tablename__ = "notifications"
