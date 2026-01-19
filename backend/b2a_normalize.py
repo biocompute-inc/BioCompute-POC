@@ -57,12 +57,28 @@ def b2a_ascii_to_recovered_bytes(ascii_path: Path) -> bytes:
                 j += 1
             token = text[i:j]
             if len(token) >= 8:
-                if len(token) % 8 != 0:
-                    raise B2ANormalizationError(f"Binary token length not multiple of 8: len={len(token)}")
-                for k in range(0, len(token), 8):
+                rem = len(token) % 8
+                full_len = len(token) - rem
+
+                # Convert complete bytes first
+                for k in range(0, full_len, 8):
                     out.append(int(token[k:k+8], 2))
+
+                # Handle leftover bits deterministically
+                if rem != 0:
+                    leftover = token[full_len:]
+                    # Allow ONLY all-zero leftover at end (e.g., "0000") -> discard
+                    if set(leftover) == {"0"}:
+                        # discard and continue
+                        pass
+                    else:
+                        raise B2ANormalizationError(
+                            f"Binary token has non-zero leftover bits (len={rem}): {leftover}"
+                        )
+
                 i = j
                 continue
+
             else:
                 # If it's 0/1 but shorter than 8, treat as a single character byte
                 out.extend(ch.encode("latin-1"))
