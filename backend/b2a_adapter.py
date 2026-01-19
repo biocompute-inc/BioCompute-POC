@@ -1,6 +1,7 @@
 from __future__ import annotations
 from pathlib import Path
 import subprocess
+from wsl_paths import to_wsl_path
 
 def run_b2a_pipeline(
     git_bash_path: Path,
@@ -30,10 +31,15 @@ def run_b2a_pipeline(
     reference_fasta = reference_fasta.resolve()
     b2a_repo_dir = b2a_repo_dir.resolve()
 
+    b2a_repo_wsl = to_wsl_path(b2a_repo_dir)
+    bam_wsl = to_wsl_path(bam_path)
+    ref_wsl = to_wsl_path(reference_fasta)
+
     cmd = [
-        str(git_bash_path),
+        "wsl",
+        "bash",
         "-lc",
-        f'cd "{b2a_repo_dir}" && bash "{script}" "{bam_path}" "{reference_fasta}" "{bitwidth}"'
+        f'cd "{b2a_repo_wsl}" && bash "./run_pipeline.sh" "{bam_wsl}" "{ref_wsl}" "{bitwidth}"'
     ]
 
     proc = subprocess.run(cmd, capture_output=True, text=True)
@@ -43,22 +49,24 @@ def run_b2a_pipeline(
 
     if proc.returncode != 0:
         raise RuntimeError(
-            "B2A pipeline failed.\n"
+            f"B2A pipeline failed in WSL (exit={proc.returncode}). "
+            f"Check logs: {stdout_log} and {stderr_log}"
             f"cmd: {cmd}\n"
             f"stdout(log): {stdout_log}\n"
             f"stderr(log): {stderr_log}\n"
             f"stderr tail:\n{(proc.stderr or '')[-1200:]}"
         )
 
-    # Find produced ASCII output in out_dir (adjust if your pipeline names it differently)
-    candidates = sorted(out_dir.glob("*.txt"), key=lambda p: p.stat().st_mtime, reverse=True)
-    if not candidates:
-        candidates = sorted(out_dir.glob("*.ascii"), key=lambda p: p.stat().st_mtime, reverse=True)
+   # Find newest output text file under out_dir or B2A repo logs folder
+    candidates = sorted(out_dir.rglob("*.txt"), key=lambda p: p.stat().st_mtime, reverse=True)
+    if candidates:
+        return candidates[0]
 
-    if not candidates:
-        raise RuntimeError(
-            f"B2A finished but no ASCII output found in {out_dir}. "
-            f"Check logs: {stdout_log} {stderr_log}"
-        )
+    # fallback: search under B2A repo for most recent ASCII log/output
+    repo_logs = (b2a_repo_dir / "logs")
+    if repo_logs.exists():
+        candidates = sorted(repo_logs.rglob("*.log"), key=lambda p: p.stat().st_mtime, reverse=True)
+        if candidates:
+            return candidates[0]
 
-    return candidates[0]
+    raise RuntimeError("B2A finished but no ASCII output file was found. Check stdout/stderr logs.")

@@ -12,7 +12,8 @@ from pathlib import Path
 from fastapi import FastAPI, Depends, UploadFile, File, HTTPException, Request, Response
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
-from fastapi.responses import FileResponse
+
+from b2a_adapter import run_b2a_pipeline
 
 from db import init_db, get_db
 from settings import get_settings
@@ -602,7 +603,7 @@ def get_job(job_id: str, request: Request, db: Session = Depends(get_db)):
         } for e in events]
     }
 
-from fastapi.responses import FileResponse
+
 
 @app.get("/jobs/{job_id}/protocol")
 def download_protocol(job_id: str, request: Request, db: Session = Depends(get_db)):
