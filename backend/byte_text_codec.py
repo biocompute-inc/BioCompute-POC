@@ -12,4 +12,4 @@ def raw_bytes_to_decimal_text(raw_path: Path, out_text_path: Path) -> None:
     with out_text_path.open("w", encoding="ascii", newline="\n") as f:
         for b in data:
             f.write(str(b))
-            f.write("\n")
+            
