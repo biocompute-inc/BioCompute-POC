@@ -156,7 +156,9 @@ def register(payload: dict, db: Session = Depends(get_db)):
     email = (payload.get("email") or "").strip().lower()
     password = payload.get("password") or ""
     role = "user"
-    display_name = (payload.get("display_name") or "").strip() or None
+    display_name = payload.get("display_name") 
+    if display_name:
+        display_name = display_name.strip()
 
     if not email or "@" not in email:
         raise HTTPException(status_code=400, detail="Invalid email")
@@ -181,7 +183,7 @@ def register(payload: dict, db: Session = Depends(get_db)):
     db.add(u)
     db.commit()
     db.refresh(u)
-    return {"id": u.id, "email": u.email, "role": u.role}
+    return {"id": u.id, "email": u.email, "role": u.role, "display_name": u.display_name}
 
 @app.post("/auth/login")
 def login(payload: dict, response: Response, db: Session = Depends(get_db)):
@@ -234,8 +236,14 @@ def create_user_admin(
     email = (payload.get("email") or "").strip().lower()
     password = payload.get("password") or ""
     role = (payload.get("role") or "").strip().lower()
-    display_name = (payload.get("display_name") or "").strip() or None
+    display_name = (
+        payload.get("display_name")
+        or payload.get("displayName")
+        or None
+    )
 
+    if display_name:
+        display_name = display_name.strip()
     if role not in {"scientist", "admin"}:
         raise HTTPException(status_code=400, detail="Invalid role")
 
@@ -420,7 +428,8 @@ def create_job_from_file(
     raw_bytes = upload.file.read()
     raw_path.write_bytes(raw_bytes)
 
-    plaintext_path = derived_dir / "plaintext_decimal.txt"
+    plaintext_path = raw_path  #input_dir / "plaintext_decimal.txt"
+    
 
     # 4) Create DB rows (file + job)
     db_file = DbFile(
@@ -455,51 +464,15 @@ def create_job_from_file(
 
     db.commit()
 
-    # 5) Convert uploaded file -> decimal-per-line plaintext (NO Base64, NO hashes)
-    try:
-        raw_bytes_to_decimal_text(raw_path, plaintext_path)
+    db_file.plaintext_path = str(plaintext_path)
+    db_file.conversion_status = "SUCCESS"
+    db_file.conversion_error = None
+    
+    job.plaintext_path = str(plaintext_path)
+    job.status = "PROTOCOL_GENERATING"
+    job.updated_at = _utcnow()
 
-        # store plaintext path only (no sha, no checksums)
-        db_file.plaintext_path = str(plaintext_path)
-        db_file.conversion_status = "SUCCESS"
-        db_file.conversion_error = None
-
-        job.plaintext_path = str(plaintext_path)
-        job.status = "PROTOCOL_GENERATING"
-        job.updated_at = _utcnow()
-
-        db.add(JobEvent(
-            job_id=job_id,
-            created_by=u.id,
-            event_type="CONVERTED",
-            message="Converted uploaded file to decimal-per-line plaintext",
-            created_at=_utcnow(),
-        ))
-
-        db.commit()
-
-    except Exception as e:
-        db_file.conversion_status = "FAILED"
-        db_file.conversion_error = str(e)
-
-        job.status = "FAILED"
-        job.error_code = "CONVERSION_FAILED"
-        job.error_message = str(e)
-        job.updated_at = _utcnow()
-
-        db.add(JobEvent(
-            job_id=job_id,
-            created_by=u.id,
-            event_type="FAILED",
-            message=f"Conversion failed: {e}",
-            created_at=_utcnow(),
-        ))
-        db.commit()
-
-        raise HTTPException(status_code=500, detail=f"Conversion failed: {e}")
-
-
-    # 6) Generate OT-2 protocol using official script CLI
+    # 5) Generate OT-2 protocol using official script CLI
     try:
         generated_protocol_path = generate_ot2_protocol(
             ot2_repo_dir=settings.ot2_repo_dir,
@@ -661,12 +634,16 @@ def upload_bam(job_id: str, request: Request, bam: UploadFile = File(...), db: S
             out_dir=b2a_dir,
             bitwidth=settings.b2a_bitwidth,
         )
+        print("DEBUG ASCII PATH:", ascii_out)
+        print("DEBUG ASCII SIZE:", Path(ascii_out).stat().st_size)
+        print("DEBUG ASCII CONTENT PREVIEW:", Path(ascii_out).read_text(encoding="utf-8", errors="ignore")[:50])
 
         j.ascii_path = str(ascii_out)
         db.add(JobEvent(job_id=job_id, created_by=u.id, event_type="B2A_DONE",
                         message=f"B2A produced: {ascii_out.name}", created_at=_utcnow()))
         db.commit()
 
+        results_dir.mkdir(parents=True, exist_ok=True)
         summary_path = results_dir / "compare_summary.json"
         summary = compare_plaintext_vs_ascii(
             plaintext_path=Path(j.plaintext_path),
