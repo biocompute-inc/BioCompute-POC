@@ -5,7 +5,18 @@ import { RequireRole } from "@/components/RequireAuth";
 import { useAuth } from "@/components/AuthProvider";
 import { apiFetch } from "@/lib/api";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import {
+  ArrowLeft,
+  CheckCircle2,
+  CloudUpload,
+  Download,
+  FileText,
+  Info,
+  Loader2,
+  ShieldCheck,
+} from "lucide-react";
 
 export default function LabJobPage() {
   return (
@@ -15,9 +26,48 @@ export default function LabJobPage() {
   );
 }
 
+function StatusPill({ status }: { status: string }) {
+  const s = (status || "").toUpperCase();
+
+  const base =
+    "inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold ring-1";
+
+  if (s === "COMPLETED") {
+    return (
+      <span className={`${base} bg-green-50 text-green-700 ring-green-200`}>
+        <CheckCircle2 className="h-4 w-4" />
+        Completed
+      </span>
+    );
+  }
+  if (s === "FAILED") {
+    return (
+      <span className={`${base} bg-red-50 text-red-700 ring-red-200`}>
+        <Info className="h-4 w-4" />
+        Failed
+      </span>
+    );
+  }
+  if (s === "DECODING" || s.includes("DECOD")) {
+    return (
+      <span className={`${base} bg-purple-50 text-purple-700 ring-purple-200`}>
+        <Loader2 className="h-4 w-4 animate-spin" />
+        Decoding
+      </span>
+    );
+  }
+  return (
+    <span className={`${base} bg-gray-50 text-gray-700 ring-gray-200`}>
+      <Info className="h-4 w-4" />
+      {status}
+    </span>
+  );
+}
+
 function LabJobInner() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
+
   const [job, setJob] = useState<any>(null);
   const [bam, setBam] = useState<File | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -96,133 +146,286 @@ function LabJobInner() {
     }
   }
 
+  const canMarkComplete = useMemo(() => {
+    return (
+      user?.role === "scientist" &&
+      job?.assigned_to === user.id &&
+      job?.status !== "COMPLETED" &&
+      job?.status !== "FAILED" &&
+      job?.status !== "DECODING"
+    );
+  }, [user, job]);
+
   if (loading) {
     return (
-      <div className="max-w-5xl mx-auto px-6 py-8 text-sm text-gray-500">
-        Loading job…
-      </div>
+      <main className="min-h-screen bg-slate-50">
+        <div className="mx-auto max-w-5xl px-6 py-10">
+          <div className="rounded-2xl bg-white p-6 shadow-sm">
+            <div className="flex items-center gap-3 text-sm text-gray-600">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading job…
+            </div>
+          </div>
+        </div>
+      </main>
     );
   }
 
   if (err) {
     return (
-      <div className="max-w-5xl mx-auto px-6 py-8">
-        <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-          {err}
+      <main className="min-h-screen bg-slate-50">
+        <div className="mx-auto max-w-5xl px-6 py-10">
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 shadow-sm">
+            {err}
+          </div>
+          <div className="mt-4">
+            <Link
+              href="/lab/inbox"
+              className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-gray-800 shadow-sm hover:bg-gray-50"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to inbox
+            </Link>
+          </div>
         </div>
-      </div>
+      </main>
     );
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-6 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-semibold tracking-tight">
-          Lab Job {job.id}
-        </h1>
-        <div className="mt-2 inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700">
-          Status: {job.status}
-        </div>
-      </div>
-
-      {/* Job info */}
-      <div className="mb-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold mb-3">
-          Job details
-        </h2>
-
-        {job.protocol_download_url ? (
-          <a
-            href={`http://127.0.0.1:8000${job.protocol_download_url}`}
-            target="_blank"
-            className="inline-flex items-center text-sm font-medium text-black hover:underline"
-          >
-            Download protocol →
-          </a>
-        ) : (
-          <p className="text-sm text-gray-500">
-            No protocol attached.
-          </p>
-        )}
-      </div>
-
-      {/* Upload BAM */}
-      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold mb-2">
-          Upload BAM
-        </h2>
-        <p className="text-sm text-gray-500 mb-4">
-          Upload the BAM file to decode and complete this job.
-        </p>
-
-        <label
-          htmlFor="bam"
-          className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 px-6 py-8 text-center hover:border-gray-400"
-        >
-          <input
-            id="bam"
-            type="file"
-            className="hidden"
-            onChange={(e) => setBam(e.target.files?.[0] || null)}
-          />
-
-          <div className="text-sm font-medium text-gray-700">
-            {bam ? bam.name : "Click to upload BAM file"}
-          </div>
-          <div className="mt-1 text-xs text-gray-400">
-            .bam format expected
-          </div>
-        </label>
-
-        <div className="mt-6 flex items-center gap-4">
-          <button
-            onClick={uploadBam}
-            disabled={!bam || uploading}
-            className="rounded-md bg-black px-5 py-2 text-sm font-medium text-white disabled:opacity-50 hover:bg-gray-800"
-          >
-            {uploading ? "Uploading…" : "Upload & Decode"}
-          </button>
-
-          <a
-            href="/lab/inbox"
-            className="text-sm font-medium text-gray-500 hover:underline"
-          >
-            Back to inbox
-          </a>
-        </div>
-
-        {user?.role === "scientist" &&
-          job?.assigned_to === user.id &&
-          job?.status !== "COMPLETED" &&
-          job?.status !== "FAILED" &&
-          job?.status !== "DECODING" && (
-            <div className="mt-6 flex items-center gap-4">
-              <button
-                onClick={markCompleted}
-                disabled={completing}
-                className="rounded-md border border-gray-300 px-5 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50 disabled:opacity-50"
-              >
-                {completing ? "Marking..." : "Mark completed"}
-              </button>
-              <span className="text-xs text-gray-500">
-                Use if the lab work is done without BAM upload.
-              </span>
+    <main className="min-h-screen bg-slate-50">
+      <div className="mx-auto w-full max-w-5xl px-6 py-10">
+        {/* Top bar */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-gray-900">
+                Lab Job
+              </h1>
+              <StatusPill status={job?.status} />
             </div>
-          )}
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-gray-600">
+              <span className="rounded-lg bg-white px-3 py-1 shadow-sm">
+                <span className="text-gray-400">ID:</span>{" "}
+                <span className="font-mono text-gray-800">{job?.id}</span>
+              </span>
+              {job?.assigned_to && (
+                <span className="rounded-lg bg-white px-3 py-1 shadow-sm">
+                  <span className="text-gray-400">Assigned:</span>{" "}
+                  <span className="font-medium text-gray-800">
+                    {job?.assigned_to}
+                  </span>
+                </span>
+              )}
+            </div>
+          </div>
 
+          <Link
+            href="/lab/inbox"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-gray-800 shadow-sm hover:bg-gray-50"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to inbox
+          </Link>
+        </div>
+
+        {/* Alerts */}
         {msg && (
-          <div className="mt-4 rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-700">
+          <div className="mt-6 rounded-2xl border border-green-200 bg-green-50 p-4 text-sm text-green-800 shadow-sm">
             {msg}
           </div>
         )}
 
-        {job.error_message && (
-          <div className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700 whitespace-pre-wrap">
+        {job?.error_message && (
+          <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 shadow-sm whitespace-pre-wrap">
             {job.error_message}
           </div>
         )}
+
+        {/* Content grid */}
+        <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
+          {/* Left: Details */}
+          <section className="lg:col-span-1">
+            <div className="rounded-2xl bg-white p-6 shadow-sm">
+              <div className="flex items-center gap-2">
+                <FileText className="h-5 w-5 text-gray-700" />
+                <h2 className="text-lg font-bold text-gray-900">Job details</h2>
+              </div>
+
+              <div className="mt-4 space-y-3 text-sm">
+                <div className="rounded-xl bg-slate-50 p-3">
+                  <div className="text-xs text-gray-500">Status</div>
+                  <div className="mt-1 font-semibold text-gray-900">
+                    {job?.status ?? "-"}
+                  </div>
+                </div>
+
+                <div className="rounded-xl bg-slate-50 p-3">
+                  <div className="text-xs text-gray-500">Job ID</div>
+                  <div className="mt-1 font-mono text-gray-900">
+                    {job?.id ?? "-"}
+                  </div>
+                </div>
+
+                <div className="rounded-xl bg-slate-50 p-3">
+                  <div className="text-xs text-gray-500">File ID</div>
+                  <div className="mt-1 font-mono text-gray-900">
+                    {job?.file_id ?? "-"}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-5">
+                {job?.protocol_download_url ? (
+                  <a
+                    href={`http://127.0.0.1:8000${job.protocol_download_url}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-800"
+                  >
+                    <Download className="h-4 w-4" />
+                    Download protocol
+                  </a>
+                ) : (
+                  <div className="rounded-xl border border-dashed border-gray-200 bg-white p-4 text-sm text-gray-500">
+                    No protocol attached.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Optional action */}
+            {canMarkComplete && (
+              <div className="mt-6 rounded-2xl bg-white p-6 shadow-sm">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="h-5 w-5 text-gray-700" />
+                  <h3 className="text-base font-bold text-gray-900">
+                    Mark completed
+                  </h3>
+                </div>
+                <p className="mt-2 text-sm text-gray-600">
+                  Use this if the lab work is done without a BAM upload.
+                </p>
+
+                <button
+                  onClick={markCompleted}
+                  disabled={completing}
+                  className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 shadow-sm hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {completing ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Marking…
+                    </>
+                  ) : (
+                    "Mark completed"
+                  )}
+                </button>
+              </div>
+            )}
+          </section>
+
+          {/* Right: Upload */}
+          <section className="lg:col-span-2">
+            <div className="rounded-2xl bg-white p-6 shadow-sm">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <CloudUpload className="h-5 w-5 text-gray-700" />
+                    <h2 className="text-lg font-bold text-gray-900">
+                      Upload BAM
+                    </h2>
+                  </div>
+                  <p className="mt-2 text-sm text-gray-600">
+                    Upload the BAM file to decode and complete this job.
+                  </p>
+                </div>
+
+                <div className="hidden sm:block text-xs text-gray-500">
+                  Expected: <span className="font-mono">.bam</span>
+                </div>
+              </div>
+
+              {/* Dropzone */}
+              <label
+                htmlFor="bam"
+                className="mt-5 flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-slate-50 px-6 py-10 text-center transition hover:border-gray-300 hover:bg-white"
+              >
+                <input
+                  id="bam"
+                  type="file"
+                  className="hidden"
+                  accept=".bam"
+                  onChange={(e) => setBam(e.target.files?.[0] || null)}
+                />
+
+                <div className="grid h-12 w-12 place-items-center rounded-2xl bg-white shadow-sm">
+                  <CloudUpload className="h-6 w-6 text-gray-700" />
+                </div>
+
+                <div className="mt-3 text-sm font-semibold text-gray-900">
+                  {bam ? bam.name : "Click to select BAM file"}
+                </div>
+                <div className="mt-1 text-xs text-gray-500">
+                  We’ll upload and start decoding automatically.
+                </div>
+              </label>
+
+              {/* Actions */}
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+                <button
+                  onClick={uploadBam}
+                  disabled={!bam || uploading}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {uploading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Uploading…
+                    </>
+                  ) : (
+                    <>
+                      <CloudUpload className="h-4 w-4" />
+                      Upload & Decode
+                    </>
+                  )}
+                </button>
+
+                <Link
+                  href="/lab/inbox"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-gray-800 shadow-sm hover:bg-gray-50"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Back to inbox
+                </Link>
+              </div>
+
+              {/* Small helper */}
+              <div className="mt-6 rounded-2xl border border-gray-100 bg-white p-4 text-sm text-gray-600">
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5">
+                    <Info className="h-4 w-4 text-gray-500" />
+                  </div>
+                  <div>
+                    <div className="font-semibold text-gray-900">Tip</div>
+                    <div className="mt-1">
+                      If your BAM upload is large, keep the tab open until the
+                      upload finishes.
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Errors */}
+              {err && (
+                <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 shadow-sm whitespace-pre-wrap">
+                  {err}
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
       </div>
-    </div>
+    </main>
   );
 }

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import sampleImage from "@/app/assets/sampleImage.png"
 
 export default function RegisterPage() {
   const [name, setName] = useState("");
@@ -150,16 +151,17 @@ export default function RegisterPage() {
 
       {/* RIGHT PANEL */}
       <div className="hidden lg:flex items-center justify-center bg-[#EFE3F5]">
-        <div className="relative h-[520px] w-[360px] rounded-xl overflow-hidden shadow-xl">
+        <div className="hidden lg:block relative h-screen bg-linear-to-br from-purple-900 to-purple-950">
           <Image
-              className="dark:invert"
-              src="/next.svg"
-              alt="Next.js logo"
-              width={100}
-              height={20}
-              priority
-            />
-        </div>
+            src={sampleImage}
+            alt="DNA Data Storage Vault"
+            fill
+            sizes="50vw"
+            className="object-cover opacity-80"
+            priority
+          />
+        {/* <div className="absolute inset-0 bg-gradient-to-t from-purple-900 via-transparent to-transparent opacity-60" /> */}
+        </div> 
       </div>
     </div>
   );

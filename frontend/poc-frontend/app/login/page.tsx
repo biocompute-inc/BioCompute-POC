@@ -5,9 +5,10 @@ import { useState } from "react";
 import { apiFetch } from "@/lib/api"; // Keep your existing imports
 import { useAuth } from "@/components/AuthProvider";
 import { useRouter } from "next/navigation";
-import { Dna, Eye, EyeOff, Lock, Mail } from "lucide-react";
+import { Dna, Mail, Lock} from "lucide-react";
 import Link from "next/link"; // Better for Next.js navigation
 import Image from "next/image";
+import sampleImage from "@/app/assets/sampleImage.png"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -52,7 +53,7 @@ export default function LoginPage() {
       
       {/* LEFT PANEL (Form) */}
       <div className="flex flex-col justify-center px-8 py-12 lg:px-20 xl:px-24">
-        <div className="w-full max-w-[440px] mx-auto">
+        <div className="w-full max-w-440px mx-auto">
           
           {/* Logo Section */}
           <div className="mb-10">
@@ -62,7 +63,7 @@ export default function LoginPage() {
                 <Dna className="h-5 w-5 text-purple-700" />
               </div>
               {/* Serif Font for Logo Match */}
-              <span className="text-2xl font-serif tracking-widest text-slate-900 uppercase font-semibold">
+              <span className="text-4xl font-bold text-purple-700 mb-2">
                 BioCompute
               </span>
             </div>
@@ -81,8 +82,8 @@ export default function LoginPage() {
           <form onSubmit={onSubmit} className="space-y-5">
             
             {/* Email Field */}
-            <div className="space-y-1.5">
-              <label htmlFor="email" className="block text-sm font-bold text-slate-700">
+            <div>
+              <label htmlFor="email" className="block text-sm font-bold text-gray-800 mb-3">
                 Email
               </label>
               <div className="relative">
@@ -91,54 +92,56 @@ export default function LoginPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter your email"
-                  autoComplete="email"
+                  placeholder="you@example.com"
+                  className="w-full bg-white border border-gray-200 rounded-lg pl-12 pr-4 py-2.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-transparent transition"
                   required
-                  className="h-11 w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-11 pr-4 text-sm text-slate-900 placeholder:text-slate-400
-                            focus:border-purple-500 focus:ring-2 focus:ring-purple-200 focus:outline-none transition-all"
                 />
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
               </div>
             </div>
             {/* Password Field */}
-            <div className="space-y-1.5">
-              <label htmlFor="password" className="block text-sm font-bold text-slate-700">
-                Password
-              </label>
-              <div className="relative">
-                  <input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter your password"
-                    autoComplete="current-password"
-                    required
-                    className="h-11 w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-11 pr-11 text-sm text-slate-900 placeholder:text-slate-400
-                              focus:border-purple-500 focus:ring-2 focus:ring-purple-200 focus:outline-none transition-all"
-                  />
-                </div>
-                <div className="flex justify-end">
-                  <Link
-                    href="/forgot-password"
-                    className="text-xs font-bold text-purple-700 hover:text-purple-800 transition-colors"
-                  >
-                    Forgot Password?
-                  </Link>
-                </div>
-              </div>
+              <div className="space-y-1.5">
+                  <div className="flex items-center justify-between mb-3">
+                    <label htmlFor="password" className="block text-sm font-bold text-gray-800">
+                      Password
+                    </label>
+                  </div>
 
-            {/* Error Message */}
-            {error && (
-              <div className="rounded-lg bg-red-50 border border-red-100 p-3 text-sm text-red-600 flex items-center gap-2">
-                <span>⚠️</span> {error}
-              </div>
-            )}
+                  <div className="relative">
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                    <input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full bg-white border border-gray-200 rounded-lg pl-12 pr-12 py-2.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-transparent transition"
+                      required
+                    />
+                  </div>
+
+                  <div className="flex justify-end">
+                    <Link
+                      href="/forgot-password"
+                      className="text-xs font-bold text-purple-700 hover:text-purple-800 transition-colors"
+                    >
+                      Forgot Password?
+                    </Link>
+                  </div>
+                </div>
+
+              {/* Error Message */}
+              {error && (
+                <div className="rounded-lg bg-red-50 border border-red-100 p-3 text-sm text-red-600 flex items-center gap-2">
+                  <span>⚠️</span> {error}
+                </div>
+              )}
 
             {/* Submit Button */}
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full rounded-lg bg-[#9D76C1] py-3 text-sm font-bold text-white shadow-sm hover:bg-[#8B64B0] focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-1 disabled:opacity-70 disabled:cursor-not-allowed transition-all"
+              className="w-full bg-[#9D76C1] hover:bg-[#8B5FBB] text-white font-bold py-3 px-4 rounded-lg transition duration-200 mt-8"
             >
               {isLoading ? "Logging in..." : "Login"}
             </button>
@@ -159,25 +162,17 @@ export default function LoginPage() {
 
       {/* RIGHT PANEL (Image) */}
       {/* Using a darker, high-tech image to match the DNA Vault aesthetic */}
-      <div className="hidden lg:block relative h-full w-full bg-black">
-        <div className="absolute inset-0 bg-purple-900/20 z-10" /> {/* Overlay for tint */}
+      <div className="hidden lg:block relative h-screen bg-linear-to-br from-purple-900 to-purple-950">
         <Image
-          src="/next.svg"
+          src={sampleImage}
           alt="DNA Data Storage Vault"
-          width={100}
-          height={20}
-          className="h-full w-full object-cover opacity-90"
+          fill
+          sizes="50vw"
+          className="object-cover opacity-80"
+          priority
         />
-        
-        {/* Optional: Add the text overlay from the image if you want that detail */}
-        <div className="absolute top-10 left-10 z-20">
-             <div className="bg-black/50 backdrop-blur-md border border-white/10 p-4 rounded-xl text-white">
-                <p className="text-xs uppercase tracking-widest text-purple-300">DNA Data Vault</p>
-                <p className="text-xl font-bold">1 Yottabyte</p>
-             </div>
-        </div>
-      </div>
-      
+        {/* <div className="absolute inset-0 bg-gradient-to-t from-purple-900 via-transparent to-transparent opacity-60" /> */}
+      </div> 
     </div>
   );
 }
