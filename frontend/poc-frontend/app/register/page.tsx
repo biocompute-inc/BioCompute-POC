@@ -5,7 +5,7 @@ import { useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import sampleImage from "@/app/assets/sampleImage.png"
+import DnaVaultImage from "@/app/assets/DnaVaultImage.png"
 
 export default function RegisterPage() {
   const [name, setName] = useState("");
@@ -150,19 +150,18 @@ export default function RegisterPage() {
       </div>
 
       {/* RIGHT PANEL */}
-      <div className="hidden lg:flex items-center justify-center bg-[#EFE3F5]">
-        <div className="hidden lg:block relative h-screen bg-linear-to-br from-purple-900 to-purple-950">
-          <Image
-            src={sampleImage}
-            alt="DNA Data Storage Vault"
-            fill
-            sizes="50vw"
-            className="object-cover opacity-80"
-            priority
-          />
-        {/* <div className="absolute inset-0 bg-gradient-to-t from-purple-900 via-transparent to-transparent opacity-60" /> */}
-        </div> 
-      </div>
+      
+      <div className="hidden lg:flex items-center justify-center overflow-hidden">
+        <Image
+          src={DnaVaultImage}
+          alt="DNA Data Storage Vault"
+          width={380}
+          height={200}
+          //sizes="50vw"
+          className="object-cover opacity-50 rounded-2xl"
+          priority
+        />
+    </div>
     </div>
   );
 }

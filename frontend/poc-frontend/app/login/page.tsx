@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { Dna, Mail, Lock} from "lucide-react";
 import Link from "next/link"; // Better for Next.js navigation
 import Image from "next/image";
-import sampleImage from "@/app/assets/sampleImage.png"
+import DnaVaultImage from "@/app/assets/DnaVaultImage.png"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -49,10 +49,10 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2 bg-[#F5E6FA]">
+    <div className="min-h-screen lg:h-screen grid grid-cols-1 lg:grid-cols-2 bg-[#F5E6FA] overflow-hidden">
       
       {/* LEFT PANEL (Form) */}
-      <div className="flex flex-col justify-center px-8 py-12 lg:px-20 xl:px-24">
+      <div className="flex flex-col justify-center px-8 py-6 lg:py-12 lg:px-20 xl:px-24">
         <div className="w-full max-w-440px mx-auto">
           
           {/* Logo Section */}
@@ -63,7 +63,7 @@ export default function LoginPage() {
                 <Dna className="h-5 w-5 text-purple-700" />
               </div>
               {/* Serif Font for Logo Match */}
-              <span className="text-4xl font-bold text-purple-700 mb-2">
+              <span className="text-4xl font-semibold tracking-tight text-slate-900">
                 BioCompute
               </span>
             </div>
@@ -86,6 +86,7 @@ export default function LoginPage() {
               <label htmlFor="email" className="block text-sm font-bold text-gray-800 mb-3">
                 Email
               </label>
+              
               <div className="relative">
                 <input
                   id="email"
@@ -161,17 +162,17 @@ export default function LoginPage() {
       </div>
 
       {/* RIGHT PANEL (Image) */}
-      {/* Using a darker, high-tech image to match the DNA Vault aesthetic */}
-      <div className="hidden lg:block relative h-screen bg-linear-to-br from-purple-900 to-purple-950">
+     
+      <div className="hidden lg:flex items-center justify-center overflow-hidden">
         <Image
-          src={sampleImage}
+          src={DnaVaultImage}
           alt="DNA Data Storage Vault"
-          fill
-          sizes="50vw"
-          className="object-cover opacity-80"
+          width={380}
+          height={200}
+          //sizes="50vw"
+          className="object-cover opacity-50 rounded-2xl"
           priority
         />
-        {/* <div className="absolute inset-0 bg-gradient-to-t from-purple-900 via-transparent to-transparent opacity-60" /> */}
       </div> 
     </div>
   );

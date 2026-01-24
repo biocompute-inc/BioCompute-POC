@@ -6,6 +6,7 @@ import { apiFetch } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
+import {  LogOut, UserPlus, UserStar } from "lucide-react";
 
 export default function AdminCreateUserPage() {
   return (
@@ -56,104 +57,148 @@ function AdminCreateUserInner() {
     }, [ user]);
 
   return (
-    <>
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F4ECF7" }}>
-        <h1>Hi, {greetingName}!</h1>
-        <button onClick={logout}>Log Out</button>
-    </div>
-    <div className="min-h-screen bg-[#F4ECF7] flex items-center justify-center px-6">
-      <div className="w-full max-w-lg rounded-xl bg-white p-8 shadow-lg">
-        <h1 className="text-2xl font-semibold text-slate-900 mb-1">
-          Create Privileged User
-        </h1>
-        <p className="text-sm text-slate-600 mb-6">
-          Add a Scientist or Admin to the BioCompute platform.
-        </p>
-
-        <form onSubmit={submit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Display Name
-            </label>
-            <input
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="Enter Display Name"
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500"
-            />
+  <div className="min-h-screen bg-[#F6F0FA]">
+    <div className="mx-auto max-w-6xl px-6 py-8">
+      {/* Header (match dashboard style) */}
+      <header className="flex items-center justify-between">
+        <div className="flex items-center gap-4 rounded-2xl bg-white/80 px-5 py-3 backdrop-blur">
+          <div className="grid h-11 w-11 place-items-center rounded-2xl bg-purple-100/70">
+            <UserStar className="h-5 w-5 text-purple-700" />
           </div>
-
           <div>
-            <label className="block text-sm font-medium mb-1">
-              Email
-            </label>
-            <input
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              type="email"
-              placeholder="some@random.com"
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Temporary Password
-            </label>
-            <input
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              type="password"
-              placeholder="Min 6 characters"
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Role
-            </label>
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value as any)}
-              className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500"
-            >
-              <option value="scientist">Scientist</option>
-              <option value="admin">Admin</option>
-            </select>
-          </div>
-
-          {error && (
-            <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-              {error}
+            <div className="text-2xl font-extrabold text-purple-700">
+              Hi {greetingName} !
             </div>
-          )}
-
-          {success && (
-            <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
-              {success}
-            </div>
-          )}
-
-          <div className="flex items-center justify-between pt-2">
-            <button
-              type="submit"
-              className="rounded-md bg-purple-600 px-5 py-2 text-sm font-semibold text-white hover:bg-purple-700 hover:underline"
-            >
-              Create User
-            </button>
-
-            <button
-              type="button"
-              onClick={() => router.push("/dashboard")}
-              className="text-sm text-slate-500 hover:underline"
-            >
-              Back to Dashboard
-            </button>
           </div>
-        </form>
-      </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={logout}
+          className="inline-flex items-center gap-2 rounded-2xl bg-white/80 px-5 py-3 text-purple-700 shadow-sm  hover:bg-white transition"
+        >
+          <LogOut className="h-4 w-4" />
+          <span className="font-semibold">Log Out</span>
+        </button>
+      </header>
+
+            {/* Page content */}
+      <main className="mt-16 flex justify-center">
+        <div className="w-full max-w-lg">
+          {/* ONE card that contains: title + subtitle + form */}
+          <div className="rounded-3xl bg-white/80 p-10 shadow-sm hover:bg-white transition backdrop-blur">
+            <h1 className="text-3xl font-extrabold text-slate-900">
+              Create Privileged User
+            </h1>
+            <p className="mt-2 text-slate-600">
+              Add a Scientist or Admin to the BioCompute platform.
+            </p>
+
+            <form onSubmit={submit} className="mt-8 space-y-5">
+              {/* Display Name */}
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Display Name
+                </label>
+                <input
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="Enter Display Name"
+                  className="w-full rounded-lg bg-white px-4 py-3 text-sm text-slate-900
+                            ring-1 ring-slate-200/70 placeholder:text-slate-400
+                            focus:outline-none focus:ring-2 focus:ring-purple-500/25
+                            hover:ring-slate-300 transition"
+                />
+              </div>
+
+              {/* Email */}
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Email
+                </label>
+                <input
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  type="email"
+                  placeholder="some@random.com"
+                  className="w-full rounded-lg bg-white px-4 py-3 text-sm text-slate-900
+                            ring-1 ring-slate-200/70 placeholder:text-slate-400
+                            focus:outline-none focus:ring-2 focus:ring-purple-500/25
+                            hover:ring-slate-300 transition"
+                />
+              </div>
+
+              {/* Password */}
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Temporary Password
+                </label>
+                <input
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  type="password"
+                  placeholder="Min 6 characters"
+                  className="w-full rounded-lg bg-white px-4 py-3 text-sm text-slate-900
+                            ring-1 ring-slate-200/70 placeholder:text-slate-400
+                            focus:outline-none focus:ring-2 focus:ring-purple-500/25
+                            hover:ring-slate-300 transition"
+                />
+              </div>
+
+              {/* Role */}
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Role
+                </label>
+                <select
+                  value={role}
+                  onChange={(e) => setRole(e.target.value as any)}
+                  className="w-full rounded-lg bg-white px-4 py-3 text-sm text-slate-900
+                            ring-1 ring-slate-200/70
+                            focus:outline-none focus:ring-2 focus:ring-purple-500/25
+                            hover:ring-slate-300 transition"
+                >
+                  <option value="scientist">Scientist</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+
+              {error && (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {error}
+                </div>
+              )}
+
+              {success && (
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                  {success}
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex items-center justify-between pt-6">
+                <button
+                  type="button"
+                  onClick={() => router.push("/admin/dashboard")}
+                  className="rounded-lg bg-white/80 px-5 py-3 text-sm font-semibold text-slate-600 shadow-sm
+                            hover:bg-white transition"
+                >
+                  Back to Dashboard
+                </button>
+
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-purple-700 shadow-sm ring-1 ring-purple-200 hover:bg-purple-500"
+                >
+                  <UserPlus className="h-4 w-4" />
+                  Create User
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </main>
     </div>
-    </>
-  );
+  </div>
+);
 }

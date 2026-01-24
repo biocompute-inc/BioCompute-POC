@@ -6,7 +6,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { apiFetch } from "@/lib/api";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Database, Dna, Download, FileText, LogOut, Plus } from "lucide-react";
+import { Database,  Download, FileText, LogOut, Plus, User } from "lucide-react";
 
 function formatBytes(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -72,17 +72,12 @@ function ActionCell({
   const isStored = s === "stored" || s === "complete" || s === "completed";
   const isBusy = s.includes("encod") || s.includes("retriev") || s.includes("process");
 
-  // Keep your existing "View" behavior if job_id exists, but also match your spec:
-  // Stored => Retrieve, Busy => Cancel.
-  // If you'd rather keep "View" always, tell me and I'll adjust.
   if (isStored) {
     return (
       <button
         type="button"
         className="font-medium text-purple-600 hover:text-purple-700"
         onClick={() => {
-          // Hook up to your real retrieve endpoint / action if you have one
-          // e.g., apiFetch(`/files/${fileId}/retrieve`, { method: "POST" })
           console.log("Retrieve", { fileId, jobId });
         }}
       >
@@ -97,7 +92,6 @@ function ActionCell({
         type="button"
         className="font-medium text-purple-400 hover:text-purple-500"
         onClick={() => {
-          // Hook up to your real cancel endpoint / action if you have one
           console.log("Cancel", { fileId, jobId });
         }}
       >
@@ -106,7 +100,7 @@ function ActionCell({
     );
   }
 
-  // Fallback: if a job exists, keep your existing "View" link
+
   if (jobId) {
     return (
       <Link href={`/jobs/${jobId}`} className="font-medium text-purple-600 hover:text-purple-700">
@@ -158,7 +152,7 @@ function DashboardInner() {
         <header className="flex items-center justify-between pt-8">
           <div className="flex items-center gap-3 rounded-2xl bg-white/60 px-5 py-3 shadow-sm backdrop-blur">
             <div className="grid h-10 w-10 place-items-center rounded-xl bg-purple-100">
-              <Dna className="h-5 w-5 text-purple-600" />
+              <User className="h-5 w-5 text-purple-600" />
             </div>
             <div className="text-2xl font-extrabold text-purple-700">
               Hi, {greetingName}!

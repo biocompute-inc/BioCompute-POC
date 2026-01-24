@@ -6,7 +6,7 @@ import { RequireRole } from "@/components/RequireAuth";
 import { apiFetch } from "@/lib/api";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, ClipboardList, RefreshCw, Download, ExternalLink } from "lucide-react";
+import { ArrowLeft, ClipboardList, RefreshCw, Download, ExternalLink, LogOut } from "lucide-react";
 
 type ScientistJob = {
   id: string;
@@ -63,7 +63,8 @@ function ResultPill({ match }: { match: boolean | null }) {
 }
 
 function ScientistJobsInner() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  
   const [jobs, setJobs] = useState<ScientistJob[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -123,13 +124,16 @@ function ScientistJobsInner() {
             </div>
           </div>
 
-          <Link
-            href="/lab/inbox"
+          <button
+            type="button"
+            onClick={logout}
             className="inline-flex items-center gap-2 rounded-xl bg-white/60 px-4 py-2.5 text-purple-600 shadow-sm backdrop-blur hover:bg-white/80"
           >
-            <ArrowLeft className="h-4 w-4" />
-            <span className="font-medium">Back to Lab Inbox</span>
-          </Link>
+            <LogOut className="h-4 w-4" />
+            <span className="font-medium">Log Out</span>
+          </button>
+
+          
         </header>
 
         {/* Banner */}
@@ -300,6 +304,15 @@ function ScientistJobsInner() {
             </div>
           </div>
         </section>
+        <div className="mt-8">
+          <Link
+            href="/lab/inbox"
+            className="inline-flex items-center gap-2 rounded-xl bg-white/60 px-4 py-2.5 text-purple-600 shadow-sm backdrop-blur hover:bg-white/80"
+            >
+            <ArrowLeft className="h-4 w-4" />
+            <span className="font-medium">Back to Lab Inbox</span>
+          </Link>
+        </div>
       </div>
     </main>
   );

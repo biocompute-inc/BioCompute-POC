@@ -13,11 +13,13 @@ import {
   Users,
   UserCog,
   RefreshCw,
-  PlusCircle,
   Search,
   ChevronUp,
   ChevronDown,
   Filter,
+  UserPlus,
+  LogOut,
+  UserStar,
 } from "lucide-react";
 
 function formatBytes(bytes: number) {
@@ -98,7 +100,7 @@ export default function AdminDashboardPage() {
 }
 
 function AdminDashboardInner() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [users, setUsers] = useState<UsersRow[]>([]);
   const [staff, setStaff] = useState<StaffRow[]>([]);
   const [summary, setSummary] = useState<{
@@ -242,7 +244,7 @@ function AdminDashboardInner() {
         <header className="flex items-center justify-between pt-8">
           <div className="flex items-center gap-3 rounded-2xl bg-white/60 px-5 py-3 shadow-sm backdrop-blur">
             <div className="grid h-10 w-10 place-items-center rounded-xl bg-purple-100">
-              <BarChart3 className="h-5 w-5 text-purple-700" />
+              <UserStar className="h-5 w-5 text-purple-700" />
             </div>
             <div>
               <div className="text-2xl font-extrabold text-purple-700">Hi {greetingName}</div>
@@ -250,13 +252,14 @@ function AdminDashboardInner() {
             </div>
           </div>
 
-          <Link
-            href="/dashboard"
+          <button
+            type="button"
+            onClick={logout}
             className="inline-flex items-center gap-2 rounded-xl bg-white/60 px-4 py-2.5 text-purple-600 shadow-sm backdrop-blur hover:bg-white/80"
           >
-            <ArrowLeft className="h-4 w-4" />
-            <span className="font-medium">Back</span>
-          </Link>
+            <LogOut className="h-4 w-4" />
+            <span className="font-medium">Log Out</span>
+          </button>
         </header>
 
         {/* Banner */}
@@ -336,7 +339,7 @@ function AdminDashboardInner() {
                   onClick={() => router.push("/admin")}
                   className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-purple-700 shadow-sm ring-1 ring-purple-200 hover:bg-purple-50"
                 >
-                  <PlusCircle className="h-4 w-4" />
+                  <UserPlus className="h-4 w-4" />
                   Create user
                 </button>
               </div>
@@ -372,8 +375,8 @@ function AdminDashboardInner() {
 
           <div className="mt-4 rounded-xl bg-white shadow-sm">
             {/* Sticky header + scroll body */}
-            <div className="max-h-[520px] overflow-auto rounded-xl">
-              <table className="min-w-[900px] w-full border-collapse">
+            <div className="max-h-520px overflow-auto rounded-xl">
+              <table className="min-w-900px w-full border-collapse">
                 <thead className="sticky top-0 z-10 bg-white">
                   <tr className="border-b border-gray-100">
                     <SortableTh
@@ -465,7 +468,7 @@ function AdminDashboardInner() {
               </div>
 
               {/* Status Filter */}
-              <div className="w-full sm:w-[220px]">
+              <div className="w-full sm:w-220px">
                 <label className="text-xs font-semibold text-gray-500">Filter status</label>
                 <div className="mt-1 flex items-center gap-2 rounded-xl bg-white px-3 py-2 shadow-sm ring-1 ring-gray-100">
                   <Filter className="h-4 w-4 text-gray-400" />
@@ -485,8 +488,8 @@ function AdminDashboardInner() {
           </div>
 
           <div className="mt-4 rounded-xl bg-white shadow-sm">
-            <div className="max-h-[520px] overflow-auto rounded-xl">
-              <table className="min-w-[900px] w-full border-collapse">
+            <div className="max-h-520px overflow-auto rounded-xl">
+              <table className="min-w-900px w-full border-collapse">
                 <thead className="sticky top-0 z-10 bg-white">
                   <tr className="border-b border-gray-100">
                     <SortableTh
