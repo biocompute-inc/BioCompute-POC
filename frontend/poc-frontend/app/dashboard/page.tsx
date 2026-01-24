@@ -6,7 +6,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { apiFetch } from "@/lib/api";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Database,  Download, FileText, LogOut, Plus, User } from "lucide-react";
+import { Ban, Database,  Download, DownloadIcon, FileText, LogOut, PanelLeftOpen, Plus, User } from "lucide-react";
 
 function formatBytes(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -46,7 +46,7 @@ function StatusCell({
   const label = isEncoding ? "Encoding..." : isRetrieving ? "Retrieving..." : `${status}...`;
 
   return (
-    <div className="min-w-[170px]">
+    <div className="min-w-170px">
       <div className="text-gray-700">{label}</div>
       <div className="mt-2 h-1 w-full rounded bg-gray-200">
         <div
@@ -74,15 +74,10 @@ function ActionCell({
 
   if (isStored) {
     return (
-      <button
-        type="button"
-        className="font-medium text-purple-600 hover:text-purple-700"
-        onClick={() => {
-          console.log("Retrieve", { fileId, jobId });
-        }}
-      >
+      <Link href={`/jobs/${jobId}?mode=retrieve`} className="inline-flex items-center gap-2 whitespace-nowrapfont-medium text-purple-600 hover:text-purple-700">
+        <DownloadIcon className="h-4 w-4" />
         Retrieve
-      </button>
+      </Link>
     );
   }
 
@@ -90,11 +85,12 @@ function ActionCell({
     return (
       <button
         type="button"
-        className="font-medium text-purple-400 hover:text-purple-500"
+        className="inline-flex items-center gap-2 whitespace-nowrap font-medium text-purple-400 hover:text-purple-500"
         onClick={() => {
           console.log("Cancel", { fileId, jobId });
         }}
       >
+        <Ban className="h-4 w-4" />
         Cancel
       </button>
     );
@@ -103,7 +99,8 @@ function ActionCell({
 
   if (jobId) {
     return (
-      <Link href={`/jobs/${jobId}`} className="font-medium text-purple-600 hover:text-purple-700">
+      <Link href={`/jobs/${jobId}?mode=view`} className="inline-flex items-center gap-2 whitespace-nowrap font-medium text-purple-600 hover:text-purple-700">
+        <PanelLeftOpen className="h-4 w-4" />
         View
       </Link>
     );
@@ -276,7 +273,7 @@ function DashboardInner() {
 
           <div className="mt-4 rounded-xl bg-white shadow-sm">
             <div className="overflow-x-auto">
-              <table className="min-w-[900px] w-full border-collapse">
+              <table className="min-w-900px w-full border-collapse">
                 <thead>
                   <tr className="border-b border-gray-100">
                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-400">

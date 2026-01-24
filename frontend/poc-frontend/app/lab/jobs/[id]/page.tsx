@@ -292,6 +292,23 @@ function LabJobInner() {
                   </div>
                 )}
               </div>
+              <div className="mt-5">
+                {job?.plaintext_path_download_url ? (
+                  <a
+                    href={`http://127.0.0.1:8000${job.plaintext_path_download_url}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-800"
+                  >
+                    <Download className="h-4 w-4" />
+                    Download File
+                  </a>
+                ) : (
+                  <div className="rounded-xl border border-dashed border-gray-200 bg-white p-4 text-sm text-gray-500">
+                    No File Found.
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Optional action */}

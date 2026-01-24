@@ -525,7 +525,8 @@ def create_job_from_file(
         "job_id": job_id,
         "file_id": file_id,
         "status": job.status,
-        "protocol_download_url": f"/jobs/{job_id}/protocol",
+        "protocol_download_url": f"/jobs/{job_id}/protocol",    
+        "plaintext_path_download_url": f"/jobs/{job_id}/plaintext",
     }
 
 @app.get("/jobs")
@@ -542,6 +543,7 @@ def list_jobs(request: Request, db: Session = Depends(get_db)):
         "status": j.status,
         "created_at": j.created_at.isoformat() if j.created_at else None,
         "protocol_download_url": f"/jobs/{j.id}/protocol" if j.protocol_path else None,
+        "plaintext_path_download_url": f"/jobs/{j.id}/plaintext",
         "error_message": j.error_message,
     } for j in jobs]
 
@@ -565,6 +567,7 @@ def get_job(job_id: str, request: Request, db: Session = Depends(get_db)):
         "assigned_to": j.assigned_to,
         "plaintext_path": j.plaintext_path,
         "protocol_download_url": f"/jobs/{j.id}/protocol" if j.protocol_path else None,
+        "plaintext_path_download_url": f"/jobs/{j.id}/plaintext",
         "error_code": j.error_code,
         "error_message": j.error_message,
         "created_at": j.created_at.isoformat() if j.created_at else None,
@@ -576,6 +579,22 @@ def get_job(job_id: str, request: Request, db: Session = Depends(get_db)):
         } for e in events]
     }
 
+@app.get("/jobs/{job_id}/plaintext")
+def download_plaintext(job_id: str, request: Request, db: Session = Depends(get_db)):
+    u = get_current_user(db, request)
+
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    # allow owner or scientist/admin
+    if job.created_by != u.id and u.role not in {"scientist", "admin"}:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    if not job.plaintext_path:
+        raise HTTPException(status_code=400, detail="Plaintext not generated yet")
+
+    return FileResponse(path=job.plaintext_path, filename=Path(job.plaintext_path).name)
 
 
 @app.get("/jobs/{job_id}/protocol")
