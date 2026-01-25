@@ -16,7 +16,9 @@ class Base(DeclarativeBase):
     pass
 
 def init_db():
-    from models import User, File, Job, Notification, JobEvent, Session  # noqa
+    from models import (
+        User, File, Job, Notification, JobEvent, Session, PasswordResetToken, RateLimitEvent  # noqa
+    )
     Base.metadata.create_all(bind=engine)
 
 def get_db():

@@ -29,6 +29,11 @@ from ot2_adapter import generate_ot2_protocol
 from byte_text_codec import raw_bytes_to_decimal_text
 from b2a_normalize import write_recovered_file, B2ANormalizationError
 from byte_compare import compare_files_bytewise
+from models import User, Session as DbSession, PasswordResetToken, RateLimitEvent
+import hashlib
+import smtplib
+from email.message import EmailMessage
+import secrets
 
 
 
@@ -207,6 +212,212 @@ def login(payload: dict, response: Response, db: Session = Depends(get_db)):
 @app.post("/auth/logout")
 def logout(response: Response):
     clear_session_cookie(response)
+    return {"ok": True}
+
+
+def send_password_reset_email(to_email: str, reset_link: str):
+    """
+    If SMTP is not configured, prints the link (POC/dev friendly).
+    If configured, sends a simple email.
+    """
+    if not getattr(settings, "smtp_host", None) or not getattr(settings, "smtp_from", None):
+        print("PASSWORD RESET LINK:", reset_link)
+        return
+
+    msg = EmailMessage()
+    msg["Subject"] = "Reset your password"
+    msg["From"] = settings.smtp_from
+    msg["To"] = to_email
+    msg.set_content(
+        f"Use this link to reset your password (expires in {settings.reset_token_ttl_minutes} minutes):\n\n"
+        f"{reset_link}\n"
+    )
+
+    use_tls = bool(getattr(settings, "smtp_use_tls", True))
+    host = settings.smtp_host
+    port = int(getattr(settings, "smtp_port", 587))
+    user = getattr(settings, "smtp_user", None)
+    pwd = getattr(settings, "smtp_password", None)
+
+    if use_tls:
+        with smtplib.SMTP(host, port) as s:
+            s.starttls()
+            if user and pwd:
+                s.login(user, pwd)
+            s.send_message(msg)
+    else:
+        with smtplib.SMTP(host, port) as s:
+            if user and pwd:
+                s.login(user, pwd)
+            s.send_message(msg)
+
+
+# ---------------------------
+# Token helpers
+# ---------------------------
+
+def make_reset_token() -> str:
+    return secrets.token_urlsafe(32)
+
+def hash_reset_token(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+def reset_expires_at() -> dt.datetime:
+    ttl = int(getattr(settings, "reset_token_ttl_minutes", 30))
+    return dt.datetime.utcnow() + dt.timedelta(minutes=ttl)
+
+
+# ---------------------------
+# Rate limiting helper
+# ---------------------------
+
+def _rate_limit(db: Session, key: str, max_hits: int, window_seconds: int) -> bool:
+    """
+    Returns True if allowed, False if rate-limited.
+    DB-backed so it survives restarts (POC-safe).
+    """
+    now = dt.datetime.utcnow()
+    window_start = now - dt.timedelta(seconds=window_seconds)
+
+    # prune old rows for this key
+    db.query(RateLimitEvent).filter(
+        RateLimitEvent.key == key,
+        RateLimitEvent.created_at < window_start,
+    ).delete(synchronize_session=False)
+    db.commit()
+
+    cnt = db.query(RateLimitEvent).filter(
+        RateLimitEvent.key == key,
+        RateLimitEvent.created_at >= window_start,
+    ).count()
+
+    if cnt >= max_hits:
+        return False
+
+    db.add(RateLimitEvent(key=key, created_at=now))
+    db.commit()
+    return True
+
+
+# ---------------------------
+# AUTH: Forgot / Reset Password
+# ---------------------------
+
+@app.post("/auth/forgot-password")
+def forgot_password(payload: dict, request: Request, db: Session = Depends(get_db)):
+    """
+    Payload: { "email": "..." }
+    Always returns {ok:true} even if email doesn't exist.
+    Rate-limited per IP + per email.
+    """
+    email = (payload.get("email") or "").strip().lower()
+    ip = request.client.host if request.client else "unknown"
+
+    # Rate limits (tweak as needed)
+    # Per IP: 10 / 10 minutes
+    if not _rate_limit(db, f"fp:ip:{ip}", max_hits=10, window_seconds=600):
+        return {"ok": True}
+
+    # Per email: 3 / 15 minutes (only if email looks valid)
+    if email and "@" in email:
+        if not _rate_limit(db, f"fp:email:{email}", max_hits=3, window_seconds=900):
+            return {"ok": True}
+
+    # Do NOT leak existence of account
+    if not email or "@" not in email:
+        return {"ok": True}
+
+    u = db.query(User).filter(User.email == email, User.is_active == True).first()  # noqa: E712
+    if not u:
+        return {"ok": True}
+
+    raw_token = make_reset_token()
+
+    db.add(PasswordResetToken(
+        user_id=u.id,
+        token_hash=hash_reset_token(raw_token),
+        expires_at=reset_expires_at(),
+        used_at=None,
+        created_at=dt.datetime.utcnow(),
+        requested_ip=ip,
+        requested_ua=request.headers.get("user-agent"),
+    ))
+    db.commit()
+
+    reset_link = f"{settings.frontend_base_url}/reset-password?token={raw_token}"
+    send_password_reset_email(u.email, reset_link)
+
+    return {"ok": True}
+
+
+@app.post("/auth/reset-password/validate")
+def validate_reset(payload: dict, db: Session = Depends(get_db)):
+    """
+    Payload: { "token": "..." }
+    Returns { ok: true/false }
+    """
+    token = payload.get("token") or ""
+    if not token:
+        return {"ok": False}
+
+    token_hash = hash_reset_token(token)
+    row = db.query(PasswordResetToken).filter(
+        PasswordResetToken.token_hash == token_hash,
+        PasswordResetToken.used_at.is_(None),
+    ).first()
+
+    if not row:
+        return {"ok": False}
+    if row.expires_at < dt.datetime.utcnow():
+        return {"ok": False}
+
+    return {"ok": True}
+
+
+@app.post("/auth/reset-password")
+def reset_password(payload: dict, db: Session = Depends(get_db)):
+    """
+    Payload: { "token": "...", "new_password": "..." }
+    """
+    token = payload.get("token") or ""
+    new_password = payload.get("new_password") or ""
+
+    if len(new_password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 chars")
+    if len(new_password) > 24:
+        raise HTTPException(status_code=400, detail="Password too long (max 24 chars)")
+    if not token or len(token) < 10:
+        raise HTTPException(status_code=400, detail="Invalid token")
+
+    token_hash = hash_reset_token(token)
+
+    row = db.query(PasswordResetToken).filter(
+        PasswordResetToken.token_hash == token_hash,
+        PasswordResetToken.used_at.is_(None),
+    ).first()
+
+    if not row:
+        raise HTTPException(status_code=400, detail="Invalid or used token")
+    if row.expires_at < dt.datetime.utcnow():
+        raise HTTPException(status_code=400, detail="Token expired")
+
+    u = db.query(User).filter(User.id == row.user_id, User.is_active == True).first()  # noqa: E712
+    if not u:
+        raise HTTPException(status_code=400, detail="Invalid token")
+
+    # update password
+    u.password_hash = hash_password(new_password)
+
+    # mark token used (one-time)
+    row.used_at = dt.datetime.utcnow()
+
+    # revoke all active sessions for this user (recommended)
+    db.query(DbSession).filter(
+        DbSession.user_id == u.id,
+        DbSession.revoked_at.is_(None),
+    ).update({DbSession.revoked_at: dt.datetime.utcnow()}, synchronize_session=False)
+
+    db.commit()
     return {"ok": True}
 
 @app.get("/auth/me")

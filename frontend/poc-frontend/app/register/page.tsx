@@ -158,7 +158,7 @@ export default function RegisterPage() {
           width={380}
           height={200}
           //sizes="50vw"
-          className="object-cover opacity-50 rounded-2xl"
+          className="object-cover rounded-2xl"
           priority
         />
     </div>

@@ -124,3 +124,27 @@ class Session(Base):
     revoked_at = Column(DateTime, nullable=True)
 
     user = relationship("User")
+
+class PasswordResetToken(Base):
+    __tablename__ = "password_reset_tokens"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+
+    token_hash = Column(String, nullable=False, unique=True, index=True)
+    expires_at = Column(DateTime, nullable=False)
+    used_at = Column(DateTime, nullable=True)
+
+    created_at = Column(DateTime, default=now_utc, index=True)
+    requested_ip = Column(String, nullable=True)
+    requested_ua = Column(Text, nullable=True)
+
+    user = relationship("User")
+
+
+class RateLimitEvent(Base):
+    __tablename__ = "rate_limit_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    key = Column(String, nullable=False, index=True)  # "fp:ip:..." or "fp:email:..."
+    created_at = Column(DateTime, default=now_utc, index=True)

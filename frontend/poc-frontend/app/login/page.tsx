@@ -13,7 +13,7 @@ import DnaVaultImage from "@/app/assets/DnaVaultImage.png"
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
+  const [showPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false); // Added loading state
   
@@ -168,10 +168,10 @@ export default function LoginPage() {
         <Image
           src={DnaVaultImage}
           alt="DNA Data Storage Vault"
-          width={380}
+          width={360}
           height={200}
           //sizes="50vw"
-          className="object-cover opacity-50 rounded-2xl"
+          className="object-cover rounded-2xl"
           priority
         />
       </div> 

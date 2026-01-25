@@ -16,6 +16,8 @@ class Settings:
     db_url: str
     b2a_reference_fasta = Path(os.getenv("B2A_REFERENCE_FASTA", ""))
     b2a_bitwidth = int(os.getenv("B2A_BITWIDTH", "8"))
+    frontend_base_url: str
+    reset_token_ttl_minutes: int
 
 def get_settings() -> Settings:
     ot2_repo = Path(os.getenv("OT2_REPO_DIR", "../tools/OT2-BRICK-MIX-PROTOCOLS")).resolve()
@@ -34,4 +36,6 @@ def get_settings() -> Settings:
         session_secret=secret,
         git_bash_path=bash,
         db_url=db_url,
+        frontend_base_url=os.getenv("FRONTEND_BASE_URL", "http://localhost:3000"),
+        reset_token_ttl_minutes=int(os.getenv("RESET_TOKEN_TTL_MINUTES", "30")),
     )
