@@ -10,6 +10,7 @@ import uuid
 from pathlib import Path
 
 from fastapi import FastAPI, Depends, UploadFile, File, HTTPException, Request, Response
+from fastapi import FastAPI, Depends, UploadFile, File as FastAPIFile, HTTPException, Request, Response
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
@@ -47,6 +48,7 @@ app.add_middleware(
 from sqlalchemy import func
 
 ACTIVE_JOB_STATUSES = {"PROTOCOL_READY", "BAM_UPLOADED", "DECODING"}
+ALLOWED_DELETE_STATUSES = {"stored", "retrieved", "failed", "completed"}
 
 def _choose_scientist_least_loaded(db: Session) -> User | None:
     scientists = db.query(User).filter(User.role == "scientist", User.is_active == True).all()  # noqa: E712
@@ -760,6 +762,64 @@ def mark_job_complete(job_id: str, request: Request, db: Session = Depends(get_d
         db.commit()
 
     return {"job_id": j.id, "status": j.status}
+
+@app.delete("/jobs/{job_id}", status_code=204)
+def delete_job(job_id: str, request: Request, db: Session = Depends(get_db)):
+    u = get_current_user(db, request)
+
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    # owner or admin
+    if job.created_by != u.id and getattr(u, "role", None) != "admin":
+        raise HTTPException(status_code=403, detail="Not allowed")
+
+    status = (job.status or "").strip().lower()
+    if status not in ALLOWED_DELETE_STATUSES:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Job cannot be deleted while status is '{job.status}'. Allowed: STORED / RETRIEVED / FAILED.",
+        )
+
+    # fetch linked file
+    db_file = db.query(DbFile).filter(DbFile.id == job.file_id).first()
+
+    # ---- DB deletes (order matters with SQLite FKs) ----
+    db.query(JobEvent).filter(JobEvent.job_id == job_id).delete(synchronize_session=False)
+    db.query(Notification).filter(Notification.job_id == job_id).delete(synchronize_session=False)
+
+    db.delete(job)
+    if db_file:
+        db.delete(db_file)
+
+    db.commit()
+
+    # ---- filesystem cleanup (best effort; don't fail request) ----
+    try:
+        # delete artifacts directory for the job
+        job_dir = settings.artifacts_dir / job_id
+        if job_dir.exists():
+            shutil.rmtree(job_dir)
+
+        # delete stored file paths if they exist (optional, but usually wanted)
+        if db_file and db_file.storage_path:
+            p = Path(db_file.storage_path)
+            if p.exists():
+                p.unlink()
+
+        # plaintext path (if separate file)
+        if db_file and db_file.plaintext_path:
+            p = Path(db_file.plaintext_path)
+            if p.exists():
+                p.unlink()
+
+        # any recovered path / ascii paths etc stored on job (they’re inside artifacts usually)
+        # if you store them elsewhere, you can unlink them here too.
+    except Exception:
+        pass
+
+    return
     
 @app.get("/dashboard/summary")
 def dashboard_summary(request: Request, db: Session = Depends(get_db)):
