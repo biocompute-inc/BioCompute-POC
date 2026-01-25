@@ -49,17 +49,17 @@ export default function ForgotPasswordPage() {
         </div>
 
         {/* Two-column layout */}
-        <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
+        <div className="grid gap-4 lg:grid-cols-2 lg:items-center">
           {/* Left: form */}
           <div>
-            <h2 className="text-4xl font-extrabold text-violet-700">
+            <h2 className="text-3xl font-extrabold text-violet-700">
               Forgot password?
             </h2>
             <p className="mt-2 text-lg text-slate-500">
               Enter your email and we’ll send a secure reset link.
             </p>
 
-            <div className="mt-8 rounded-2xl bg-white/70 p-8 shadow-sm ring-1 ring-slate-200/70 backdrop-blur">
+            <div className="mt-8 rounded-2xl bg-white/70 p-4 shadow-sm ring-1 ring-slate-200/70 backdrop-blur">
               {state === "done" ? (
                 <div className="rounded-xl border border-violet-200 bg-violet-50 p-4">
                   <div className="text-base font-bold text-violet-800">
@@ -107,7 +107,7 @@ export default function ForgotPasswordPage() {
                   <button
                     type="submit"
                     disabled={state === "loading"}
-                    className="mt-8 w-full rounded-xl bg-[#9B7BD2] px-5 py-4 text-xl font-extrabold text-white shadow-sm transition hover:brightness-[1.02] active:translate-y-1px disabled:opacity-70"
+                    className="mt-8 w-full rounded-xl bg-[#9B7BD2] px-2 py-2 text-xl font-extrabold text-white shadow-sm transition hover:brightness-[1.02] active:translate-y-1px disabled:opacity-70"
                   >
                     <span className="inline-flex items-center justify-center gap-2">
                       {state === "loading" ? "Sending…" : "Send reset link"}

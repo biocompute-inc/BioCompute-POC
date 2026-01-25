@@ -12,7 +12,7 @@ from pathlib import Path
 from fastapi import FastAPI, Depends, UploadFile, File, HTTPException, Request, Response
 from fastapi import FastAPI, Depends, UploadFile, File as FastAPIFile, HTTPException, Request, Response
 from fastapi.responses import FileResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session as OrmSession
 
 from b2a_adapter import run_b2a_pipeline
 
@@ -55,7 +55,7 @@ from sqlalchemy import func
 ACTIVE_JOB_STATUSES = {"PROTOCOL_READY", "BAM_UPLOADED", "DECODING"}
 ALLOWED_DELETE_STATUSES = {"stored", "retrieved", "failed", "completed"}
 
-def _choose_scientist_least_loaded(db: Session) -> User | None:
+def _choose_scientist_least_loaded(db: OrmSession) -> User | None:
     scientists = db.query(User).filter(User.role == "scientist", User.is_active == True).all()  # noqa: E712
     if not scientists:
         return None
@@ -73,7 +73,7 @@ def _choose_scientist_least_loaded(db: Session) -> User | None:
     # Pick the scientist with minimum active jobs
     return min(scientists, key=lambda s: counts.get(s.id, 0))
 
-def _auto_assign_job(db: Session, job: Job, actor_user_id: int):
+def _auto_assign_job(db: OrmSession, job: Job, actor_user_id: int):
     """
     Assign job to a scientist automatically once protocol is ready.
     """
@@ -117,13 +117,20 @@ def _auto_assign_job(db: Session, job: Job, actor_user_id: int):
 
     db.commit()
 
-def _mark_job_done_free_scientist(db: Session, job: Job):
+def _mark_job_done_free_scientist(db: OrmSession, job: Job):
     """
     When job completes, scientist is automatically freed because BUSY/FREE is computed.
     No DB change needed except job status already updated.
     """
     job.updated_at = _utcnow()
     db.commit()
+
+def _safe_rm_tree(p: Path):
+    try:
+        if p.exists() and p.is_dir():
+            shutil.rmtree(p, ignore_errors=True)
+    except Exception:
+        pass
 
 
 @app.on_event("startup")
@@ -134,7 +141,7 @@ def startup():
 def _utcnow():
     return dt.datetime.utcnow()
 
-def _notify_all_scientists_and_admins(db: Session, job_id: str, title: str, message: str, ntype: str):
+def _notify_all_scientists_and_admins(db: OrmSession, job_id: str, title: str, message: str, ntype: str):
     recipients = db.query(User).filter(User.is_active == True, User.role.in_(["scientist", "admin"])).all()  # noqa: E712
     for u in recipients:
         db.add(Notification(
@@ -155,7 +162,7 @@ def root():
 # ---------------- AUTH ----------------
 
 @app.post("/auth/register")
-def register(payload: dict, db: Session = Depends(get_db)):
+def register(payload: dict, db: OrmSession = Depends(get_db)):
     """
     Payload: { "email": "...", "password": "...", "role": "user|scientist|admin" (optional) }
     For POC: allow role set during registration to speed testing.
@@ -163,7 +170,7 @@ def register(payload: dict, db: Session = Depends(get_db)):
     email = (payload.get("email") or "").strip().lower()
     password = payload.get("password") or ""
     role = "user"
-    display_name = payload.get("display_name") 
+    display_name = payload.get("display_name") or payload.get("displayName") or None
     if display_name:
         display_name = display_name.strip()
 
@@ -193,7 +200,7 @@ def register(payload: dict, db: Session = Depends(get_db)):
     return {"id": u.id, "email": u.email, "role": u.role, "display_name": u.display_name}
 
 @app.post("/auth/login")
-def login(payload: dict, response: Response, db: Session = Depends(get_db)):
+def login(payload: dict, response: Response, db: OrmSession = Depends(get_db)):
     email = (payload.get("email") or "").strip().lower()
     password = payload.get("password") or ""
 
@@ -217,7 +224,7 @@ def logout(response: Response):
 
 def send_password_reset_email(to_email: str, reset_link: str):
     """
-    If SMTP is not configured, prints the link (POC/dev friendly).
+    If SMTP is not configured, prints the link (dev friendly).
     If configured, sends a simple email.
     """
     if not getattr(settings, "smtp_host", None) or not getattr(settings, "smtp_from", None):
@@ -271,7 +278,7 @@ def reset_expires_at() -> dt.datetime:
 # Rate limiting helper
 # ---------------------------
 
-def _rate_limit(db: Session, key: str, max_hits: int, window_seconds: int) -> bool:
+def _rate_limit(db: OrmSession, key: str, max_hits: int, window_seconds: int) -> bool:
     """
     Returns True if allowed, False if rate-limited.
     DB-backed so it survives restarts (POC-safe).
@@ -304,7 +311,7 @@ def _rate_limit(db: Session, key: str, max_hits: int, window_seconds: int) -> bo
 # ---------------------------
 
 @app.post("/auth/forgot-password")
-def forgot_password(payload: dict, request: Request, db: Session = Depends(get_db)):
+def forgot_password(payload: dict, request: Request, db: OrmSession = Depends(get_db)):
     """
     Payload: { "email": "..." }
     Always returns {ok:true} even if email doesn't exist.
@@ -351,7 +358,7 @@ def forgot_password(payload: dict, request: Request, db: Session = Depends(get_d
 
 
 @app.post("/auth/reset-password/validate")
-def validate_reset(payload: dict, db: Session = Depends(get_db)):
+def validate_reset(payload: dict, db: OrmSession = Depends(get_db)):
     """
     Payload: { "token": "..." }
     Returns { ok: true/false }
@@ -375,7 +382,7 @@ def validate_reset(payload: dict, db: Session = Depends(get_db)):
 
 
 @app.post("/auth/reset-password")
-def reset_password(payload: dict, db: Session = Depends(get_db)):
+def reset_password(payload: dict, db: OrmSession = Depends(get_db)):
     """
     Payload: { "token": "...", "new_password": "..." }
     """
@@ -420,13 +427,71 @@ def reset_password(payload: dict, db: Session = Depends(get_db)):
     db.commit()
     return {"ok": True}
 
+@app.post("/auth/delete-account")
+def delete_account(request: Request, response: Response, db: OrmSession = Depends(get_db)):
+    u = get_current_user(db, request)
+
+    # 1) Collect related rows first (before deletion)
+    user_files = db.query(DbFile).filter(DbFile.user_id == u.id).all()
+    user_jobs = db.query(Job).filter(Job.created_by == u.id).all()
+
+    # 2) Remove disk artifacts (best-effort)
+    # - uploaded raw files
+    for f in user_files:
+        try:
+            p = Path(f.storage_path)
+            if p.exists() and p.is_file():
+                p.unlink()
+        except Exception:
+            pass
+
+    # - job folders
+    for j in user_jobs:
+        try:
+            job_dir = settings.artifacts_dir / j.id
+            _safe_rm_tree(job_dir)
+        except Exception:
+            pass
+
+    # 3) Delete DB rows connected to user
+    # order matters due to foreign keys
+    db.query(JobEvent).filter(JobEvent.created_by == u.id).delete(synchronize_session=False)
+    db.query(Notification).filter(Notification.recipient_user_id == u.id).delete(synchronize_session=False)
+    db.query(DbSession).filter(DbSession.user_id == u.id).delete(synchronize_session=False)
+
+    # Jobs created by user
+    for j in user_jobs:
+        db.query(JobEvent).filter(JobEvent.job_id == j.id).delete(synchronize_session=False)
+        db.query(Notification).filter(Notification.job_id == j.id).delete(synchronize_session=False)
+    db.query(Job).filter(Job.created_by == u.id).delete(synchronize_session=False)
+
+    # Files uploaded by user
+    db.query(DbFile).filter(DbFile.user_id == u.id).delete(synchronize_session=False)
+
+    # 4) Soft delete the user account
+    u.is_active = False
+    u.deleted_at = _utcnow()
+
+    # optional: anonymize email to allow re-register same email later
+    u.email = f"deleted_{u.id}_{int(_utcnow().timestamp())}@deleted.local"
+    u.display_name = None
+    u.password_hash = "deleted"
+
+    db.commit()
+
+    # 5) Clear cookie/session
+    clear_session_cookie(response)
+
+    return {"ok": True}
+
+
 @app.get("/auth/me")
-def me(request: Request, db: Session = Depends(get_db)):
+def me(request: Request, db: OrmSession = Depends(get_db)):
     u = get_current_user(db, request)
     return {"id": u.id, "email": u.email, "role": u.role, "display_name": u.display_name}
 
 @app.post("/auth/profile")
-def update_profile(payload: dict, request: Request, db: Session = Depends(get_db)):
+def update_profile(payload: dict, request: Request, db: OrmSession = Depends(get_db)):
     u = get_current_user(db, request)
 
     display_name = (payload.get("display_name") or "").strip() or None
@@ -440,7 +505,7 @@ def update_profile(payload: dict, request: Request, db: Session = Depends(get_db
 def create_user_admin(
     payload: dict,
     request: Request,
-    db: Session = Depends(get_db)
+    db: OrmSession = Depends(get_db)
 ):
     admin = get_current_user(db, request)
     if admin.role != "admin":
@@ -493,7 +558,7 @@ def create_user_admin(
     }
 
 @app.get("/admin/analytics/users")
-def admin_users_analytics(request: Request, db: Session = Depends(get_db)):
+def admin_users_analytics(request: Request, db: OrmSession = Depends(get_db)):
     admin = get_current_user(db, request)
     if admin.role != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
@@ -533,7 +598,7 @@ def admin_users_analytics(request: Request, db: Session = Depends(get_db)):
     return out
 
 @app.get("/admin/analytics/staff")
-def admin_staff_analytics(request: Request, db: Session = Depends(get_db)):
+def admin_staff_analytics(request: Request, db: OrmSession = Depends(get_db)):
     admin = get_current_user(db, request)
     if admin.role != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
@@ -583,7 +648,7 @@ def admin_staff_analytics(request: Request, db: Session = Depends(get_db)):
 # ---------------- NOTIFICATIONS ----------------
 
 @app.get("/notifications")
-def list_notifications(request: Request, db: Session = Depends(get_db)):
+def list_notifications(request: Request, db: OrmSession = Depends(get_db)):
     u = get_current_user(db, request)
 
     items = db.query(Notification).filter(
@@ -601,7 +666,7 @@ def list_notifications(request: Request, db: Session = Depends(get_db)):
     } for n in items]
 
 @app.post("/notifications/{notif_id}/read")
-def read_notification(notif_id: int, request: Request, db: Session = Depends(get_db)):
+def read_notification(notif_id: int, request: Request, db: OrmSession = Depends(get_db)):
     u = get_current_user(db, request)
     n = db.query(Notification).filter(Notification.id == notif_id, Notification.recipient_user_id == u.id).first()
     if not n:
@@ -618,7 +683,7 @@ def read_notification(notif_id: int, request: Request, db: Session = Depends(get
 def create_job_from_file(
     request: Request,
     upload: UploadFile = File(...),
-    db: Session = Depends(get_db),
+    db: OrmSession = Depends(get_db),
 ):
     u = get_current_user(db, request)
 
@@ -743,7 +808,7 @@ def create_job_from_file(
     }
 
 @app.get("/jobs")
-def list_jobs(request: Request, db: Session = Depends(get_db)):
+def list_jobs(request: Request, db: OrmSession = Depends(get_db)):
     u = get_current_user(db, request)
 
     q = db.query(Job).order_by(Job.created_at.desc())
@@ -761,7 +826,7 @@ def list_jobs(request: Request, db: Session = Depends(get_db)):
     } for j in jobs]
 
 @app.get("/jobs/{job_id}")
-def get_job(job_id: str, request: Request, db: Session = Depends(get_db)):
+def get_job(job_id: str, request: Request, db: OrmSession = Depends(get_db)):
     u = get_current_user(db, request)
     j = db.query(Job).filter(Job.id == job_id).first()
     if not j:
@@ -793,7 +858,7 @@ def get_job(job_id: str, request: Request, db: Session = Depends(get_db)):
     }
 
 @app.get("/jobs/{job_id}/plaintext")
-def download_plaintext(job_id: str, request: Request, db: Session = Depends(get_db)):
+def download_plaintext(job_id: str, request: Request, db: OrmSession = Depends(get_db)):
     u = get_current_user(db, request)
 
     job = db.query(Job).filter(Job.id == job_id).first()
@@ -811,7 +876,7 @@ def download_plaintext(job_id: str, request: Request, db: Session = Depends(get_
 
 
 @app.get("/jobs/{job_id}/protocol")
-def download_protocol(job_id: str, request: Request, db: Session = Depends(get_db)):
+def download_protocol(job_id: str, request: Request, db: OrmSession = Depends(get_db)):
     u = get_current_user(db, request)
 
     job = db.query(Job).filter(Job.id == job_id).first()
@@ -829,7 +894,7 @@ def download_protocol(job_id: str, request: Request, db: Session = Depends(get_d
 
 
 @app.post("/jobs/{job_id}/bam")
-def upload_bam(job_id: str, request: Request, bam: UploadFile = File(...), db: Session = Depends(get_db)):
+def upload_bam(job_id: str, request: Request, bam: UploadFile = File(...), db: OrmSession = Depends(get_db)):
     u = get_current_user(db, request)
     require_role(u, {"scientist", "admin"})
 
@@ -927,7 +992,7 @@ def upload_bam(job_id: str, request: Request, bam: UploadFile = File(...), db: S
         raise HTTPException(status_code=500, detail=f"Decoding failed: {e}")
 
 @app.post("/jobs/{job_id}/complete")
-def mark_job_complete(job_id: str, request: Request, db: Session = Depends(get_db)):
+def mark_job_complete(job_id: str, request: Request, db: OrmSession = Depends(get_db)):
     u = get_current_user(db, request)
     require_role(u, {"scientist", "admin"})
 
@@ -975,7 +1040,7 @@ def mark_job_complete(job_id: str, request: Request, db: Session = Depends(get_d
     return {"job_id": j.id, "status": j.status}
 
 @app.delete("/jobs/{job_id}", status_code=204)
-def delete_job(job_id: str, request: Request, db: Session = Depends(get_db)):
+def delete_job(job_id: str, request: Request, db: OrmSession = Depends(get_db)):
     u = get_current_user(db, request)
 
     job = db.query(Job).filter(Job.id == job_id).first()
@@ -1033,7 +1098,7 @@ def delete_job(job_id: str, request: Request, db: Session = Depends(get_db)):
     return
     
 @app.get("/dashboard/summary")
-def dashboard_summary(request: Request, db: Session = Depends(get_db)):
+def dashboard_summary(request: Request, db: OrmSession = Depends(get_db)):
     u = get_current_user(db, request)
 
     total_files = db.query(func.count(DbFile.id)).filter(DbFile.user_id == u.id).scalar() or 0
@@ -1055,7 +1120,7 @@ def dashboard_summary(request: Request, db: Session = Depends(get_db)):
     }
 
 @app.get("/dashboard/files")
-def dashboard_files(request: Request, db: Session = Depends(get_db)):
+def dashboard_files(request: Request, db: OrmSession = Depends(get_db)):
     u = get_current_user(db, request)
 
     files = (
@@ -1086,7 +1151,7 @@ def dashboard_files(request: Request, db: Session = Depends(get_db)):
     return rows
 
 @app.get("/scientist/jobs")
-def scientist_jobs(request: Request, db: Session = Depends(get_db)):
+def scientist_jobs(request: Request, db: OrmSession = Depends(get_db)):
     s = get_current_user(db, request)
     if s.role not in {"scientist", "admin"}:
         raise HTTPException(status_code=403, detail="Scientist/admin access required")

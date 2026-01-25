@@ -21,6 +21,7 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=now_utc)
     last_login_at = Column(DateTime, nullable=True)
+    deleted_at = Column(DateTime, nullable=True)
 
 class File(Base):
     __tablename__ = "files"
