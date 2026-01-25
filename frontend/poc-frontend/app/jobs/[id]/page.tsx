@@ -13,6 +13,7 @@ import {
   FileText,
   Info,
   Loader2,
+  Trash,
   
 } from "lucide-react";
 
@@ -25,6 +26,8 @@ export default function JobDetailPage() {
     </RequireAuth>
   );
 }
+
+
 
 function StatusPill({ status }: { status: string }) {
   const s = (status || "").toUpperCase();
@@ -105,6 +108,11 @@ function JobDetailInner() {
     () => Boolean(job?.plaintext_path_download_url),
     [job]
   );
+  const canDelete = useMemo(() => {
+  const s = String(job?.status || "").trim().toLowerCase();
+  return ["failed", "completed", "stored", "retrieved"].includes(s);
+  }, [job?.status]);
+
 
   useEffect(() => {
     let cancelled = false;
@@ -126,6 +134,27 @@ function JobDetailInner() {
       cancelled = true;
     };
   }, [id]);
+
+  async function handleDeleteJob() {
+  if (!job?.id) return;
+
+  const ok = confirm("Delete this job and its file? This cannot be undone.");
+  if (!ok) return;
+
+  try {
+    setErr(null);
+    setMsg(null);
+
+    await apiFetch(`/jobs/${job.id}`, { method: "DELETE" });
+
+    setMsg("Job deleted.");
+    // send them back to dashboard after delete
+    window.location.href = "/dashboard";
+  } catch (e: any) {
+    setErr(e.message);
+  }
+}
+
 
   if (loading) {
     return (
@@ -219,7 +248,7 @@ function JobDetailInner() {
         <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* Left: Details */}
           <section className="lg:col-span-1">
-            <div className="rounded-2xl bg-white p-6 shadow-sm">
+            <div className="rounded-2xl bg-white p-6 pb-8 shadow-sm overflow-visible">
               <div className="flex items-center gap-2">
                 <FileText className="h-5 w-5 text-gray-700" />
                 <h2 className="text-lg font-bold text-gray-900">Job details</h2>
@@ -303,6 +332,27 @@ function JobDetailInner() {
                     No file found.
                   </div>
                 )}
+                {canDelete ? (
+                    <button
+                      type="button"
+                      onClick={handleDeleteJob}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-red-600! px-4 py-2.5 text-sm font-semibold text-white! hover:bg-red-700 cursor-pointer select-none appearance-none border-0 focus:outline-none focus:ring-2 focus:ring-red-300"
+                    >
+                      <Trash className="h-4 w-4" />
+                      Delete job
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gray-200! px-4 py-2.5 text-sm font-semibold text-gray-500! cursor-not-allowed select-none appearance-none border-0"
+                      title="You can delete only when status is Completed / Failed"
+                    >
+                      <Trash className="h-4 w-4" />
+                      Delete job
+                    </button>
+                    
+                  )}
               </div>
             </div>
 

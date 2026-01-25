@@ -5,7 +5,7 @@ import { useState } from "react";
 import { apiFetch } from "@/lib/api"; // Keep your existing imports
 import { useAuth } from "@/components/AuthProvider";
 import { useRouter } from "next/navigation";
-import { Dna, Mail, Lock} from "lucide-react";
+import { Dna, Mail, Lock, LogIn} from "lucide-react";
 import Link from "next/link"; // Better for Next.js navigation
 import Image from "next/image";
 import DnaVaultImage from "@/app/assets/DnaVaultImage.png"
@@ -142,9 +142,10 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-[#9D76C1] hover:bg-[#8B5FBB] text-white font-bold py-3 px-4 rounded-lg transition duration-200 mt-8"
+              className="w-full bg-[#9D76C1] hover:bg-[#8B5FBB] text-white font-bold py-3 px-4 rounded-lg transition duration-200 mt-8 inline-flex items-center justify-center gap-2"
             >
-              {isLoading ? "Logging in..." : "Login"}
+              <span>{isLoading ? "Logging in..." : "Login"}</span>
+              <LogIn className="h-4 w-4" />
             </button>
           </form>
 

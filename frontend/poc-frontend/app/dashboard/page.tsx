@@ -71,6 +71,7 @@ function ActionCell({
   const s = (status || "").toLowerCase();
   const isStored = s === "stored" || s === "complete" || s === "completed";
   const isBusy = s.includes("encod") || s.includes("retriev") || s.includes("process");
+  
 
   if (isStored) {
     return (
