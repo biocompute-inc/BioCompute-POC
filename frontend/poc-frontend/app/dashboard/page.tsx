@@ -120,7 +120,7 @@ function ActionCell({
   return <span className="text-gray-400">-</span>;
 }
 
-/** Modal that matches the screenshot style */
+
 function ConfirmDangerModal({
   open,
   title = "Deactivate account",

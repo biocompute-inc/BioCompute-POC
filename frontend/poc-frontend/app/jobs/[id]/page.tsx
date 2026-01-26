@@ -5,6 +5,8 @@ import { RequireAuth } from "@/components/RequireAuth";
 import { apiFetch } from "@/lib/api";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import ConfirmDangerModal from "@/components/ConfirmDangerModal";
+import { useRef } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -99,6 +101,10 @@ function JobDetailInner() {
   const [err, setErr] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [redirecting, setRedirecting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const openDeleteBtnRef = useRef<HTMLButtonElement | null>(null);
 
   const canDownloadProtocol = useMemo(
     () => Boolean(job?.protocol_download_url),
@@ -110,8 +116,15 @@ function JobDetailInner() {
   );
   const canDelete = useMemo(() => {
   const s = String(job?.status || "").trim().toLowerCase();
+
+  // Block anything still working
+  if (s.includes("encoding") || s.includes("decoding") || s.includes("processing")) {
+    return false;
+  }
+
+  // Allow only safe terminal states
   return ["failed", "completed", "stored", "retrieved"].includes(s);
-  }, [job?.status]);
+}, [job?.status]);
 
 
   useEffect(() => {
@@ -135,25 +148,34 @@ function JobDetailInner() {
     };
   }, [id]);
 
-  async function handleDeleteJob() {
-  if (!job?.id) return;
+async function deleteJobConfirmed() {
+  if (!job?.id || deleting) return;
 
-  const ok = confirm("Delete this job and its file? This cannot be undone.");
-  if (!ok) return;
+  setDeleting(true);
+  setErr(null);
+  setMsg(null);
 
   try {
-    setErr(null);
-    setMsg(null);
-
     await apiFetch(`/jobs/${job.id}`, { method: "DELETE" });
 
-    setMsg("Job deleted.");
-    // send them back to dashboard after delete
-    window.location.href = "/dashboard";
+    setMsg("Job deleted successfully. Redirecting to dashboard…");
+    setRedirecting(true);
+
+    // Soft delay so user sees confirmation
+    setTimeout(() => {
+      window.location.href = "/dashboard";
+    }, 1200);
+
   } catch (e: any) {
     setErr(e.message);
+  } finally {
+    setDeleting(false);
+    setShowDeleteConfirm(false);
+    openDeleteBtnRef.current?.focus();
   }
 }
+
+
 
 
   if (loading) {
@@ -334,8 +356,12 @@ function JobDetailInner() {
                 )}
                 {canDelete ? (
                     <button
+                      ref={openDeleteBtnRef}
                       type="button"
-                      onClick={handleDeleteJob}
+                      onClick={() => {
+                        setErr(null);
+                        setShowDeleteConfirm(true);
+                      }}
                       className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-red-600! px-4 py-2.5 text-sm font-semibold text-white! hover:bg-red-700 cursor-pointer select-none appearance-none border-0 focus:outline-none focus:ring-2 focus:ring-red-300"
                     >
                       <Trash className="h-4 w-4" />
@@ -346,7 +372,7 @@ function JobDetailInner() {
                       type="button"
                       disabled
                       className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gray-200! px-4 py-2.5 text-sm font-semibold text-gray-500! cursor-not-allowed select-none appearance-none border-0"
-                      title="You can delete only when status is Completed / Failed"
+                      title={`Job is currently "${job?.status}". You can delete only after it finishes.`}
                     >
                       <Trash className="h-4 w-4" />
                       Delete job
@@ -356,7 +382,6 @@ function JobDetailInner() {
               </div>
             </div>
 
-            {/* Tip card (mirrors lab page helper card) */}
             <div className="mt-6 rounded-2xl border border-gray-100 bg-white p-4 text-sm text-gray-600 shadow-sm">
               <div className="flex items-start gap-3">
                 <div className="mt-0.5">
@@ -424,6 +449,22 @@ function JobDetailInner() {
           </Link>
         </div>
       </div>
+      <ConfirmDangerModal
+        open={showDeleteConfirm}
+        title="Delete job"
+        description={`You are about to permanently delete this job and its file.
+        Job ID: ${job?.id}
+        File: ${job?.original_filename || job?.file_id || "Your file"}? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        loading={deleting}
+        onCancel={() => {
+          if (deleting) return;
+          setShowDeleteConfirm(false);
+          openDeleteBtnRef.current?.focus();
+        }}
+        onConfirm={deleteJobConfirmed}
+      />
     </main>
   );
 }
