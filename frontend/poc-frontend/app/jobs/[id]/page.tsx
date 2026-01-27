@@ -79,7 +79,6 @@ async function handleDownload(urlPath: string, fallbackName = "download.txt") {
 
   const blob = await res.blob();
 
-  // filename from Content-Disposition (supports filename* too)
   const cd = res.headers.get("content-disposition") || "";
   const m =
     /filename\*=(?:UTF-8'')?([^;]+)|filename="?([^\";]+)"?/i.exec(cd);
@@ -101,6 +100,7 @@ function JobDetailInner() {
   const [err, setErr] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [redirecting, setRedirecting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);

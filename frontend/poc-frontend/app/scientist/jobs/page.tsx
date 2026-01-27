@@ -205,7 +205,7 @@ function ScientistJobsInner() {
         <section className="mt-10">
           <div className="rounded-xl bg-white shadow-sm">
             <div className="overflow-x-auto">
-              <table className="min-w-[980px] w-full border-collapse">
+              <table className="min-w-980px w-full border-collapse">
                 <thead>
                   <tr className="border-b border-gray-100">
                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-400">
@@ -236,7 +236,7 @@ function ScientistJobsInner() {
                       className="border-b border-gray-100 last:border-b-0"
                     >
                       <td className="px-6 py-5 text-sm text-gray-800">
-                        <div className="max-w-[260px] truncate font-mono">
+                        <div className="max-w-260px truncate font-mono">
                           {j.id}
                         </div>
                         <div className="mt-1 text-xs text-gray-400">
