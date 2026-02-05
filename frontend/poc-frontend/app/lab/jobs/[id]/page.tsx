@@ -230,7 +230,7 @@ async function pushToOT2() {
               className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-gray-800 shadow-sm hover:bg-gray-50"
             >
               <ArrowLeft className="h-4 w-4" />
-              Back to inbox
+              Back to Lab inbox
             </Link>
           </div>
         </div>
@@ -271,7 +271,7 @@ async function pushToOT2() {
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-gray-800 shadow-sm hover:bg-gray-50"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to inbox
+            Back to Lab inbox
           </Link>
         </div>
 
@@ -485,11 +485,11 @@ async function pushToOT2() {
                 </button>
 
                 <Link
-                  href="/lab/inbox"
+                  href="/scientist/jobs"
                   className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-gray-800 shadow-sm hover:bg-gray-50"
                 >
                   <ArrowLeft className="h-4 w-4" />
-                  Back to inbox
+                  Back to Dashboard
                 </Link>
               </div>
 
