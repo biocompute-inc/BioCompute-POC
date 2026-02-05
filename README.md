@@ -52,9 +52,9 @@ git submodule update --init --recursive
 git clone https://github.com/biocompute-inc/BioCompute-POC.git
 cd biocompute-poc/backend
 python -m venv venv
-.\venv\Scripts\Activate.ps1
+.\venv\Scripts\activate
 pip install -r requirements.txt
-uvicorn app:app --reload
+uvicorn app:app --reload --port 8000
 ```
 
 ## Next Steps
