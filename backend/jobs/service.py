@@ -21,6 +21,7 @@ from models import Notification
 from models import User
 from ot2_adapter import generate_ot2_protocol
 from settings import get_settings
+from ot2_client import OT2Config, push_protocol_placeholder
 
 settings = get_settings()
 
@@ -553,3 +554,100 @@ def scientist_jobs(request: Request, db: OrmSession = Depends(get_db)):
             }
         )
     return out
+
+def push_to_ot2(job_id: str, request: Request, db: OrmSession = Depends(get_db)):
+    u = get_current_user(db, request)
+    require_role(u, {"scientist", "admin"})
+
+    j = db.query(Job).filter(Job.id == job_id).first()
+    if not j:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if not j.protocol_path:
+        raise HTTPException(status_code=400, detail="Protocol not generated yet")
+
+    protocol_path = Path(j.protocol_path)
+    if not protocol_path.exists():
+        raise HTTPException(status_code=400, detail=f"Protocol missing: {protocol_path}")
+
+    # record push requested
+    j.status = "PUSH_REQUESTED"
+    j.updated_at = _utcnow()
+    db.add(JobEvent(
+        job_id=job_id,
+        created_by=u.id,
+        event_type="PUSH_REQUESTED",
+        message="Scientist clicked Push to Opentrons",
+        created_at=_utcnow(),
+    ))
+    db.commit()
+
+    try:
+        # ---- PLACEHOLDER (WORKS NOW) ----
+        result = push_protocol_placeholder(protocol_path=protocol_path, job_id=job_id)
+
+        # ---- REAL SSH (ENABLE LATER) ----
+        # cfg = OT2Config(
+        #     host=j.ot2_host or settings.ot2_host,               # TODO: store in settings/job
+        #     user=settings.ot2_ssh_user,                          # TODO
+        #     ssh_key_path=str(settings.ot2_ssh_key_path),         # TODO
+        #     remote_dir=settings.ot2_protocol_dir,                # TODO
+        #     run_cmd_template=settings.ot2_run_cmd_template,      # TODO
+        # )
+        # result = push_and_run_protocol_ssh(protocol_path=protocol_path, job_id=job_id, cfg=cfg)
+
+        j.status = "PUSHED_TO_OT2"
+        j.updated_at = _utcnow()
+        db.add(JobEvent(
+            job_id=job_id,
+            created_by=u.id,
+            event_type="PUSHED_TO_OT2",
+            message="Protocol push done (placeholder)",
+            created_at=_utcnow(),
+        ))
+        db.commit()
+
+        return result
+
+    except Exception as e:
+        j.status = "FAILED"
+        j.error_code = "OT2_PUSH_FAILED"
+        j.error_message = str(e)
+        j.updated_at = _utcnow()
+        db.add(JobEvent(
+            job_id=job_id,
+            created_by=u.id,
+            event_type="FAILED",
+            message=f"OT-2 push failed: {e}",
+            created_at=_utcnow(),
+        ))
+        db.commit()
+        raise HTTPException(status_code=500, detail=f"OT-2 push failed: {e}")
+    
+def job_events(job_id: str, request: Request, db: OrmSession = Depends(get_db)):
+    u = get_current_user(db, request)
+
+    j = db.query(Job).filter(Job.id == job_id).first()
+    if not j:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    # basic access: creator OR scientist/admin
+    if u.role == "user" and j.created_by != u.id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    evs = (
+        db.query(JobEvent)
+        .filter(JobEvent.job_id == job_id)
+        .order_by(JobEvent.created_at.asc())
+        .all()
+    )
+
+    return [
+        {
+            "event_type": e.event_type,
+            "message": e.message,
+            "created_at": e.created_at.isoformat() if e.created_at else None,
+            "created_by": e.created_by,
+        }
+        for e in evs
+    ]
+

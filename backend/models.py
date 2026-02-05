@@ -80,6 +80,12 @@ class Job(Base):
     first_mismatch_offset = Column(Integer, nullable=True)
     original_size_bytes = Column(Integer, nullable=True)  # optional but useful
 
+        # OT-2 integration (optional for POC)
+    ot2_host = Column(String, nullable=True)         # e.g. 169.254.x.x
+    ot2_remote_path = Column(String, nullable=True)  # where protocol was copied
+    ot2_run_status = Column(String, nullable=True)   # RUNNING / DONE / FAILED etc.
+
+
 
 class Notification(Base):
     __tablename__ = "notifications"
