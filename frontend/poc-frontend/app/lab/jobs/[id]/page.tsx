@@ -70,14 +70,20 @@ function LabJobInner() {
 
   const [job, setJob] = useState<any>(null);
   const [bam, setBam] = useState<File | null>(null);
+
   const [msg, setMsg] = useState<string | null>(null);
+  const [pushMsg, setPushMsg] = useState<string | null>(null);
+
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [completing, setCompleting] = useState(false);
+  const [pushing, setPushing] = useState(false);
+
 
   useEffect(() => {
     let cancelled = false;
+
 
     (async () => {
       setErr(null);
@@ -95,6 +101,11 @@ function LabJobInner() {
       cancelled = true;
     };
   }, [id]);
+
+  async function refreshJob() {
+  const data = await apiFetch(`/jobs/${id}`);
+  setJob(data);
+}
 
   async function uploadBam() {
     if (!bam || uploading) return;
@@ -119,6 +130,7 @@ function LabJobInner() {
 
       const data = await res.json();
       setMsg(`Completed: ${data.status}`);
+      await refreshJob();
     } catch (e: any) {
       setErr(e.message);
     } finally {
@@ -145,6 +157,40 @@ function LabJobInner() {
       setCompleting(false);
     }
   }
+async function pushToOT2() {
+  if (pushing) return;
+
+  setErr(null);
+  setMsg(null);
+  setPushMsg(null);
+  setPushing(true);
+
+  try {
+    const res = await fetch(`http://localhost:8000/jobs/${id}/push-to-ot2`, {
+      method: "POST",
+      credentials: "include",
+    });
+
+    if (!res.ok) {
+      throw new Error(await res.text());
+    }
+
+    const data = await res.json();
+
+    // show message
+    setPushMsg(
+      data?.message ||
+        "Pushed to OT-2 (placeholder). When you add IP/key/command, this will run SSH."
+    );
+
+    // refresh job (status/events might have changed)
+    await refreshJob();
+  } catch (e: any) {
+    setErr(e.message);
+  } finally {
+    setPushing(false);
+  }
+}
 
   const canMarkComplete = useMemo(() => {
     return (
@@ -235,6 +281,12 @@ function LabJobInner() {
             {msg}
           </div>
         )}
+        {pushMsg && (
+          <div className="mt-6 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 shadow-sm">
+            {pushMsg}
+          </div>
+        )}
+
 
         {job?.error_message && (
           <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 shadow-sm whitespace-pre-wrap">
@@ -275,23 +327,47 @@ function LabJobInner() {
                 </div>
               </div>
 
-              <div className="mt-5">
+              <div className="mt-5 space-y-3">
                 {job?.protocol_download_url ? (
-                  <a
-                    href={`http://127.0.0.1:8000${job.protocol_download_url}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-800"
-                  >
-                    <Download className="h-4 w-4" />
-                    Download protocol
-                  </a>
+                  <>
+                    <a
+                      href={`http://127.0.0.1:8000${job.protocol_download_url}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-800"
+                    >
+                      <Download className="h-4 w-4" />
+                      Download protocol
+                    </a>
+
+                    {/* Push to OT-2 */}
+                    <button
+                      type="button"
+                      onClick={pushToOT2}
+                      disabled={pushing}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-black px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
+                      title="Placeholder now; will use SSH when OT-2 IP and key are configured"
+                    >
+                      {pushing ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Pushing…
+                        </>
+                      ) : (
+                        <>
+                          <ShieldCheck className="h-4 w-4" />
+                          Push to OT-2
+                        </>
+                      )}
+                    </button>
+                  </>
                 ) : (
                   <div className="rounded-xl border border-dashed border-gray-200 bg-white p-4 text-sm text-gray-500">
                     No protocol attached.
                   </div>
                 )}
               </div>
+
               <div className="mt-5">
                 {job?.plaintext_path_download_url ? (
                   <a
