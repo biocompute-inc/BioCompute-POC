@@ -18,6 +18,32 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE // keep consistent everywhere (cookies + CORS)
+
+async function handleDownload(urlPath: string, fallbackName = "download.txt") {
+  const res = await fetch(`${API_BASE}${urlPath}`, {
+    method: "GET",
+    credentials: "include",
+  });
+
+  if (!res.ok) throw new Error(`Download failed (${res.status})`);
+
+  const blob = await res.blob();
+
+  const cd = res.headers.get("content-disposition") || "";
+  const m =
+    /filename\*=(?:UTF-8'')?([^;]+)|filename="?([^\";]+)"?/i.exec(cd);
+  const filename = decodeURIComponent((m?.[1] || m?.[2] || fallbackName).trim());
+
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(a.href);
+}
+
 export default function LabJobPage() {
   return (
     <RequireRole allowed={["scientist", "admin"]}>
@@ -36,7 +62,7 @@ function StatusPill({ status }: { status: string }) {
     return (
       <span className={`${base} bg-green-50 text-green-700 ring-green-200`}>
         <CheckCircle2 className="h-4 w-4" />
-        Completed
+        Retrived
       </span>
     );
   }
@@ -330,15 +356,26 @@ async function pushToOT2() {
               <div className="mt-5 space-y-3">
                 {job?.protocol_download_url ? (
                   <>
-                    <a
-                      href={`http://127.0.0.1:8000${job.protocol_download_url}`}
-                      target="_blank"
-                      rel="noreferrer"
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          setErr(null);
+                          setMsg(null);
+                          await handleDownload(
+                            job.protocol_download_url,
+                            `protocol_${job?.id ?? "job"}.py`
+                          );
+                          setMsg("Protocol downloaded.");
+                        } catch (e: any) {
+                          setErr(e.message);
+                        }
+                      }}
                       className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-800"
                     >
                       <Download className="h-4 w-4" />
                       Download protocol
-                    </a>
+                    </button>
 
                     {/* Push to OT-2 */}
                     <button
@@ -370,15 +407,26 @@ async function pushToOT2() {
 
               <div className="mt-5">
                 {job?.plaintext_path_download_url ? (
-                  <a
-                    href={`http://127.0.0.1:8000${job.plaintext_path_download_url}`}
-                    target="_blank"
-                    rel="noreferrer"
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        setErr(null);
+                        setMsg(null);
+                        await handleDownload(
+                          job.plaintext_path_download_url,
+                          job.original_filename || "your_uploaded_file"
+                        );
+                        setMsg("File downloaded.");
+                      } catch (e: any) {
+                        setErr(e.message);
+                      }
+                    }}
                     className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-800"
                   >
                     <Download className="h-4 w-4" />
                     Download File
-                  </a>
+                  </button>
                 ) : (
                   <div className="rounded-xl border border-dashed border-gray-200 bg-white p-4 text-sm text-gray-500">
                     No File Found.

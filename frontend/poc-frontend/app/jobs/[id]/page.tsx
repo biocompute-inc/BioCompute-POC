@@ -41,7 +41,7 @@ function StatusPill({ status }: { status: string }) {
     return (
       <span className={`${base} bg-green-50 text-green-700 ring-green-200`}>
         <CheckCircle2 className="h-4 w-4" />
-        Completed
+        Retrived
       </span>
     );
   }
