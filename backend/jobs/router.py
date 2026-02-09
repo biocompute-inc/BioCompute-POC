@@ -4,6 +4,11 @@ from fastapi import APIRouter
 
 from jobs import service as jobs_service
 
+# Author - Naveen M, for BioCompute, PoC - Version 0.0.1
+# This file defines the API routes for job-related operations, such as creating jobs from uploaded files, listing jobs, retrieving job details, uploading BAM files, marking jobs as complete, and more.
+# Each route is associated with a corresponding service function in jobs/service.py that implements the business logic for that operation. 
+# These routes are used by the frontend to interact with the backend for all job-related functionality, and they require authentication to ensure that only authorized users can access and manage their jobs.
+
 router = APIRouter()
 
 router.post("/jobs/from-file")(jobs_service.create_job_from_file)

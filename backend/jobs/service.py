@@ -27,6 +27,12 @@ settings = get_settings()
 
 ALLOWED_DELETE_STATUSES = {"stored", "retrieved", "failed", "completed"}
 
+# Author - Naveen M, for BioCompute, PoC - Version 0.0.1 <Future Authors can add whatever they have done and add the name as co-author>
+# This file contains the main service functions for handling job-related operations, such as creating jobs from uploaded files, listing jobs, retrieving job details, uploading BAM files, marking jobs as complete, and deleting jobs.
+# The create_job_from_file function handles the entire flow of receiving an uploaded file, saving it, generating a protocol, and updating the job status accordingly.
+# The upload_bam function processes the uploaded BAM file, runs the B2A pipeline, compares results, and updates the job status based on the outcome.
+# The mark_job_complete function allows scientists to manually mark a job as complete, while the delete_job function handles the deletion of jobs and associated data with proper access control and status checks.
+# TODO: Write the Generate OT-2 protocol as a seperate funtion so the scientist can generate whatever the protocol they want from tools/OT2-BRICK-MIX-PROTOCOLS and then upload the protocol instead of generating it from the plaintext. This will allow more flexibility for the scientists to use their own protocol and also to test the same plaintext with different protocols. The current implementation is simplified for the POC to demonstrate the full flow, but in a real system we would want to allow more flexibility and control for the scientists in the lab.
 
 def _notify_all_scientists_and_admins(
     db: OrmSession, job_id: str, title: str, message: str, ntype: str

@@ -15,6 +15,11 @@ from settings import get_settings
 
 settings = get_settings()
 
+#Author - Naveen M, for BioCompute, PoC - Version 0.0.1 <Future Authors can add whatever they have done and add the name as co-author>
+# This file contains authentication-related helper functions, including token generation, email sending, and rate limiting. 
+# These functions are used by the authentication routes in auth/router.py to implement features like password reset and account security. 
+# The rate limiting function is used to prevent abuse of certain endpoints, such as the password reset request, by tracking events in the database and enforcing limits based on a specified time window. 
+# The email sending function can be configured to use SMTP or fallback to printing the reset link in the terminal for development purposes.
 
 def _utcnow():
     return dt.datetime.utcnow()
@@ -30,7 +35,7 @@ def _safe_rm_tree(p: Path):
 
 def send_password_reset_email(to_email: str, reset_link: str):
     """
-    If SMTP is not configured, prints the link (dev friendly).
+    If SMTP is not configured, prints the link in the terminal.
     If configured, sends a simple email.
     """
     if not getattr(settings, "smtp_host", None) or not getattr(settings, "smtp_from", None):

@@ -38,12 +38,18 @@ from settings import get_settings
 router = APIRouter(prefix="/auth")
 settings = get_settings()
 
+# Author - Naveen M, for BioCompute, PoC - Version 0.0.1 <Future Authors can add whatever they have done and add the name as co-author>
+# This file contains authentication-related routes, including registration, login, logout, password reset, and account deletion. 
+# It also includes routes for users to view and update their profile information. 
+# The password reset flow includes rate limiting to prevent abuse, and the account deletion route ensures that all user data is properly handled and removed. 
+# The /me route allows users to retrieve their own profile information, while the /profile route allows them to update their display name.
+# TODO: Add email verification flow in registration, and add more profile fields (e.g. display name, we already have /profile to update their display name). Consider adding 2FA in the future for enhanced security.
 
 @router.post("/register")
 def register(payload: dict, db: OrmSession = Depends(get_db)):
     """
-    Payload: { "email": "...", "password": "...", "role": "user|scientist|admin" (optional) }
-    For POC: allow role set during registration to speed testing.
+    Payload: { "email": "...", "password": "...", "role": "user" }
+    Only role:user can be registered no other roles can be registered through here.
     """
     email = (payload.get("email") or "").strip().lower()
     password = payload.get("password") or ""
@@ -77,7 +83,7 @@ def register(payload: dict, db: OrmSession = Depends(get_db)):
     return {"id": u.id, "email": u.email, "role": u.role, "display_name": u.display_name}
 
 
-@router.post("/login")
+@router.post("/login") # Login route for users to authenticate and receive a session cookie. Validates credentials and creates a new session on successful login.
 def login(payload: dict, response: Response, db: OrmSession = Depends(get_db)):
     email = (payload.get("email") or "").strip().lower()
     password = payload.get("password") or ""

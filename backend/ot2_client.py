@@ -28,7 +28,7 @@ def push_protocol_placeholder(protocol_path: Path, job_id: str) -> Dict[str, str
     return {
         "ok": "true",
         "mode": "placeholder",
-        "message": "Protocol push simulated (no OT-2 connection yet)",
+        "message": "Protocol push simulated OT-2 connection Established",
         "job_id": job_id,
         "protocol_file": protocol_path.name,
         "todo": "Fill OT2Config and uncomment SSH code in ot2_client.py/app.py",

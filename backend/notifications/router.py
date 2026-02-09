@@ -10,6 +10,11 @@ from models import Notification
 
 router = APIRouter()
 
+# Author - Naveen M, for BioCompute, PoC - Version 0.0.1
+# This file defines the API routes for managing notifications, including listing notifications for the current user and marking notifications as read. 
+# The list_notifications route retrieves the most recent notifications for the authenticated user, while the read_notification route allows the user to mark a specific notification as read. 
+# These routes require authentication and use the current user's information to query the database for relevant notifications.
+
 
 @router.get("/notifications")
 def list_notifications(request: Request, db: OrmSession = Depends(get_db)):

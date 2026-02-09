@@ -11,6 +11,11 @@ from models import User
 
 ACTIVE_JOB_STATUSES = {"PROTOCOL_READY", "BAM_UPLOADED", "DECODING"}
 
+# Author - Naveen M, for BioCompute, PoC - Version 0.0.1
+# This file contains helper functions for automatically assigning jobs to scientists and marking them as done.
+# The _choose_scientist_least_loaded function selects the scientist with the fewest active jobs to assign new work to, while the _auto_assign_job function handles the logic of assigning a job to a scientist and creating the necessary database entries for tracking the assignment and notifying the scientist.
+# The _mark_job_done_free_scientist function is called when a job is marked as done, allowing the system to update the job status and free up the scientist for new assignments.
+
 
 def _choose_scientist_least_loaded(db: OrmSession) -> User | None:
     scientists = (

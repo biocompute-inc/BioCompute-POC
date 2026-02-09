@@ -13,11 +13,15 @@ from models import User
 
 router = APIRouter()
 
+# Author - Naveen M, for BioCompute, PoC - Version 0.0.1
+# This file contains admin-specific routes for user management and analytics. It includes endpoints for creating users and viewing analytics about users and staff. Access to these endpoints is restricted to users with the admin role.
+# It requires admin role.
+# This is helps admin to create special users like scientists and also to view analytics about users and staff.
 
-@router.post("/admin/users")
+@router.post("/admin/users") #Admin route to create a new user (scientist or admin)
 def create_user_admin(payload: dict, request: Request, db: OrmSession = Depends(get_db)):
     admin = get_current_user(db, request)
-    if admin.role != "admin":
+    if admin.role != "admin": #If the user is not an admin, raise a 403 error
         raise HTTPException(status_code=403, detail="Admin access required")
 
     email = (payload.get("email") or "").strip().lower()
@@ -63,7 +67,7 @@ def create_user_admin(payload: dict, request: Request, db: OrmSession = Depends(
     }
 
 
-@router.get("/admin/analytics/users")
+@router.get("/admin/analytics/users") #Admin route to get analytics about users, including total files, storage, and retrievals. Accessible only by admins.
 def admin_users_analytics(request: Request, db: OrmSession = Depends(get_db)):
     admin = get_current_user(db, request)
     if admin.role != "admin":
@@ -109,7 +113,7 @@ def admin_users_analytics(request: Request, db: OrmSession = Depends(get_db)):
     return out
 
 
-@router.get("/admin/analytics/staff")
+@router.get("/admin/analytics/staff") #Admin route to get analytics about staff (scientists and admins), including their current status (busy/free) based on active jobs. Accessible only by admins.
 def admin_staff_analytics(request: Request, db: OrmSession = Depends(get_db)):
     admin = get_current_user(db, request)
     if admin.role != "admin":
@@ -135,7 +139,7 @@ def admin_staff_analytics(request: Request, db: OrmSession = Depends(get_db)):
         active_jobs = active_map.get(s.id, 0)
         status = "BUSY" if (s.role == "scientist" and active_jobs > 0) else "FREE"
         if s.role == "admin":
-            status = "N/A"
+            status = "ADMIN"
         out.append(
             {
                 "user_id": s.id,

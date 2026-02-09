@@ -11,6 +11,11 @@ from models import Job
 
 router = APIRouter()
 
+# Author - Naveen M, for BioCompute, PoC - Version 0.0.1
+# This file contains routes for the user dashboard, including endpoints to get a summary of the user's activity and a list of their uploaded files.
+# The dashboard summary includes total files, total storage used, and total retrievals (jobs that reached B2A output).
+# The files endpoint returns a list of the user's uploaded files along with their status and associated job information.
+# These routes require authentication and use the current user's information to query the database for relevant data.
 
 @router.get("/")
 def root():
