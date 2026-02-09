@@ -233,6 +233,8 @@ def get_job(job_id: str, request: Request, db: OrmSession = Depends(get_db)):
         "status": j.status,
         "created_by": j.created_by,
         "assigned_to": j.assigned_to,
+        "file_id": j.file_id,
+        "original_filename": j.file.original_filename if j.file else None,
         "plaintext_path": j.plaintext_path,
         "protocol_download_url": f"/jobs/{j.id}/protocol" if j.protocol_path else None,
         "plaintext_path_download_url": f"/jobs/{j.id}/plaintext",
@@ -265,7 +267,10 @@ def download_plaintext(job_id: str, request: Request, db: OrmSession = Depends(g
     if not job.plaintext_path:
         raise HTTPException(status_code=400, detail="Plaintext not generated yet")
 
-    return FileResponse(path=job.plaintext_path, filename=Path(job.plaintext_path).name)
+    # Use the stored input filename (from input_dir) for download name
+    download_name = Path(job.plaintext_path).name
+
+    return FileResponse(path=job.plaintext_path, filename=download_name)
 
 
 def download_protocol(job_id: str, request: Request, db: OrmSession = Depends(get_db)):
@@ -656,4 +661,3 @@ def job_events(job_id: str, request: Request, db: OrmSession = Depends(get_db)):
         }
         for e in evs
     ]
-

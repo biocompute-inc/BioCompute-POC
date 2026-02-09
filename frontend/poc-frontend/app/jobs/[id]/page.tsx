@@ -69,7 +69,7 @@ function StatusPill({ status }: { status: string }) {
   );
 }
 
-async function handleDownload(urlPath: string, fallbackName = "download.txt") {
+async function handleDownload(urlPath: string, fallbackName?: string) {
   const res = await fetch(`${API_BASE}${urlPath}`, {
     method: "GET",
     credentials: "include",
@@ -82,7 +82,8 @@ async function handleDownload(urlPath: string, fallbackName = "download.txt") {
   const cd = res.headers.get("content-disposition") || "";
   const m =
     /filename\*=(?:UTF-8'')?([^;]+)|filename="?([^\";]+)"?/i.exec(cd);
-  const filename = decodeURIComponent((m?.[1] || m?.[2] || fallbackName).trim());
+  const fallback = (fallbackName || "").trim();
+  const filename = decodeURIComponent((m?.[1] || m?.[2] || fallback).trim());
 
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
@@ -337,7 +338,7 @@ async function deleteJobConfirmed() {
                         setMsg(null);
                         await handleDownload(
                           job.plaintext_path_download_url,
-                          job.original_filename || "your_uploaded_file"
+                          job.original_filename
                         );
                         setMsg("File downloaded.");
                       } catch (e: any) {

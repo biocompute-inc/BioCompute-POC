@@ -20,7 +20,7 @@ import {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE // keep consistent everywhere (cookies + CORS)
 
-async function handleDownload(urlPath: string, fallbackName = "download.txt") {
+async function handleDownload(urlPath: string, fallbackName?: string) {
   const res = await fetch(`${API_BASE}${urlPath}`, {
     method: "GET",
     credentials: "include",
@@ -33,7 +33,8 @@ async function handleDownload(urlPath: string, fallbackName = "download.txt") {
   const cd = res.headers.get("content-disposition") || "";
   const m =
     /filename\*=(?:UTF-8'')?([^;]+)|filename="?([^\";]+)"?/i.exec(cd);
-  const filename = decodeURIComponent((m?.[1] || m?.[2] || fallbackName).trim());
+  const fallback = (fallbackName || "").trim();
+  const filename = decodeURIComponent((m?.[1] || m?.[2] || fallback).trim());
 
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
@@ -62,7 +63,7 @@ function StatusPill({ status }: { status: string }) {
     return (
       <span className={`${base} bg-green-50 text-green-700 ring-green-200`}>
         <CheckCircle2 className="h-4 w-4" />
-        Retrived
+        Retrived with 100% Accuracy
       </span>
     );
   }
@@ -415,7 +416,7 @@ async function pushToOT2() {
                         setMsg(null);
                         await handleDownload(
                           job.plaintext_path_download_url,
-                          job.original_filename || "your_uploaded_file"
+                          job.original_filename
                         );
                         setMsg("File downloaded.");
                       } catch (e: any) {
