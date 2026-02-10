@@ -101,7 +101,7 @@ def create_job_from_file(
     job = Job(
         id=job_id,
         created_by=u.id,
-        file_id=file_id,  # IMPORTANT: link job to file if your schema has it
+        file_id=file_id,  # IMPORTANT: link job to file 
         status="CREATED",
         created_at=_utcnow(),
         updated_at=_utcnow(),
