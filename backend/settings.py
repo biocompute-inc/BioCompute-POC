@@ -26,8 +26,11 @@ def get_settings() -> Settings:
     secret = os.getenv("SESSION_SECRET", "dev-secret-change-me")
     bash = Path(os.getenv("GIT_BASH_PATH", "C:/Program Files/Git/bin/bash.exe"))
 
-    db_path = Path(__file__).parent / "poc.db"
-    db_url = f"sqlite:///{db_path.as_posix()}"
+    db_url = os.getenv("DATABASE_URL", "")
+    if not db_url:
+        raise RuntimeError("DATABASE_URL is not set")
+
+
 
     return Settings(
         ot2_repo_dir=ot2_repo,

@@ -1,3 +1,4 @@
+import os
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config
@@ -15,6 +16,13 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 from db import Base
 import models  # IMPORTANT: forces model registration
+
+# Override alembic.ini URL if DATABASE_URL is set (e.g. Supabase)
+db_url = os.getenv("DATABASE_URL")
+if db_url:
+    # configparser interpolation treats % as special; escape for safety
+    safe_db_url = db_url.replace("%", "%%")
+    config.set_main_option("sqlalchemy.url", safe_db_url)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
