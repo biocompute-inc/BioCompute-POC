@@ -11,13 +11,16 @@ import Link from "next/link";
 import {
   ArrowLeft,
   CheckCircle2,
-  Download,
+  FileCode,
+  FileDown,
   FileText,
   Info,
   Loader2,
+  Shredder,
   Trash,
-  
+
 } from "lucide-react";
+import { useAuth } from "@/components/AuthProvider";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE // keep consistent everywhere (cookies + CORS)
 
@@ -80,8 +83,7 @@ async function handleDownload(urlPath: string, fallbackName?: string) {
   const blob = await res.blob();
 
   const cd = res.headers.get("content-disposition") || "";
-  const m =
-    /filename\*=(?:UTF-8'')?([^;]+)|filename="?([^\";]+)"?/i.exec(cd);
+  const m = /filename\*=(?:UTF-8'')?([^;]+)|filename="?([^\";]+)"?/i.exec(cd);
   const fallback = (fallbackName || "").trim();
   const filename = decodeURIComponent((m?.[1] || m?.[2] || fallback).trim());
 
@@ -96,7 +98,6 @@ async function handleDownload(urlPath: string, fallbackName?: string) {
 
 function JobDetailInner() {
   const { id } = useParams<{ id: string }>();
-
   const [job, setJob] = useState<any>(null);
   const [err, setErr] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -115,15 +116,16 @@ function JobDetailInner() {
     () => Boolean(job?.plaintext_path_download_url),
     [job]
   );
+  const { user} = useAuth();
+
+  const greetingName = useMemo(() => {
+    return  user?.display_name || user?.email || "User";
+  }, [ user]);
   const canDelete = useMemo(() => {
   const s = String(job?.status || "").trim().toLowerCase();
-
-  // Block anything still working
   if (s.includes("encoding") || s.includes("decoding") || s.includes("processing")) {
     return false;
   }
-
-  // Allow only safe terminal states
   return ["failed", "completed", "stored", "retrieved"].includes(s);
 }, [job?.status]);
 
@@ -223,11 +225,12 @@ async function deleteJobConfirmed() {
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-gray-900">
-                Job
+                <div className="text-2xl font-extrabold text-neutral-700">Welcome, {greetingName}!</div>
               </h1>
               <StatusPill status={job?.status} />
+              
             </div>
-
+              <p className="py-3">Here You can see the detailed status of File {job?.original_filename}</p>
             <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-gray-600">
               <span className="rounded-lg bg-white px-3 py-1 shadow-sm">
                 <span className="text-gray-400">ID:</span>{" "}
@@ -286,6 +289,19 @@ async function deleteJobConfirmed() {
                 </div>
 
                 <div className="rounded-xl bg-slate-50 p-3">
+                  <div className="text-xs text-gray-500">File Name</div>
+                  <div className="mt-1 font-mono text-gray-900">
+                    {job?.original_filename ?? "-"}
+                  </div>
+                </div>
+                <div className="rounded-xl bg-slate-50 p-3">
+                  <div className="text-xs text-gray-500">Scientist Assigned</div>
+                  <div className="mt-1 font-mono text-gray-900">
+                    {job?.assigned_to ?? "-"}
+                  </div>
+                </div>
+
+                <div className="rounded-xl bg-slate-50 p-3">
                   <div className="text-xs text-gray-500">Job ID</div>
                   <div className="mt-1 font-mono text-gray-900">
                     {job?.id ?? "-"}
@@ -320,7 +336,7 @@ async function deleteJobConfirmed() {
                     }}
                     className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-800"
                   >
-                    <Download className="h-4 w-4" />
+                    <FileCode className="h-4 w-4" />
                     Download protocol
                   </button>
                 ) : (
@@ -347,7 +363,7 @@ async function deleteJobConfirmed() {
                     }}
                     className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-800"
                   >
-                    <Download className="h-4 w-4" />
+                    <FileDown className="h-4 w-4" />
                     Download file
                   </button>
                 ) : (
@@ -365,7 +381,7 @@ async function deleteJobConfirmed() {
                       }}
                       className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-red-600! px-4 py-2.5 text-sm font-semibold text-white! hover:bg-red-700 cursor-pointer select-none appearance-none border-0 focus:outline-none focus:ring-2 focus:ring-red-300"
                     >
-                      <Trash className="h-4 w-4" />
+                      <Shredder className="h-4 w-4" />
                       Delete job
                     </button>
                   ) : (

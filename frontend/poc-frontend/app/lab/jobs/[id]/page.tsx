@@ -11,11 +11,13 @@ import {
   ArrowLeft,
   CheckCircle2,
   CloudUpload,
-  Download,
+  FileCode,
+  FileDown,
   FileText,
   Info,
   Loader2,
   ShieldCheck,
+  Wrench,
 } from "lucide-react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE // keep consistent everywhere (cookies + CORS)
@@ -107,6 +109,9 @@ function LabJobInner() {
   const [completing, setCompleting] = useState(false);
   const [pushing, setPushing] = useState(false);
 
+  const greetingName = useMemo(() => {
+      return  user?.display_name || user?.email || "User";
+  }, [ user]);
 
   useEffect(() => {
     let cancelled = false;
@@ -273,10 +278,11 @@ async function pushToOT2() {
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-gray-900">
-                Lab Job
+                <div className="text-2xl font-extrabold text-neutral-700">Welcome, {greetingName}!</div>
               </h1>
               <StatusPill status={job?.status} />
             </div>
+            <p className="py-3">Here You can see the detailed status of File {job?.original_filename}</p>
             <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-gray-600">
               <span className="rounded-lg bg-white px-3 py-1 shadow-sm">
                 <span className="text-gray-400">ID:</span>{" "}
@@ -374,7 +380,7 @@ async function pushToOT2() {
                       }}
                       className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-800"
                     >
-                      <Download className="h-4 w-4" />
+                      <FileCode className="h-4 w-4" />
                       Download protocol
                     </button>
 
@@ -393,7 +399,7 @@ async function pushToOT2() {
                         </>
                       ) : (
                         <>
-                          <ShieldCheck className="h-4 w-4" />
+                          <Wrench className="h-4 w-4" />
                           Push to OT-2
                         </>
                       )}
@@ -425,7 +431,7 @@ async function pushToOT2() {
                     }}
                     className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-800"
                   >
-                    <Download className="h-4 w-4" />
+                    <FileDown className="h-4 w-4" />
                     Download File
                   </button>
                 ) : (
