@@ -11,8 +11,10 @@ import {
   Bell,
   ClipboardList,
   Info,
+  Mail,
   Sparkles,
 } from "lucide-react";
+
 
 export default function LabInboxPage() {
   return (
@@ -76,8 +78,7 @@ function InboxInner() {
   const hasItems = items.length > 0;
 
   const sortedItems = useMemo(() => {
-    // If your backend includes created_at/ts, this will sort newest-first.
-    // If not present, it preserves original order.
+
     return [...items].sort((a, b) => {
       const at = a.created_at ? new Date(a.created_at).getTime() : 0;
       const bt = b.created_at ? new Date(b.created_at).getTime() : 0;
@@ -105,14 +106,22 @@ function InboxInner() {
                   </p>
                 </div>
               </div>
-
               <div className="mt-4 text-sm text-gray-600">
                 {loading ? null : (
-                  <span>
+                  <span className="inline-flex items-center gap-1">
                     {hasItems ? (
                       <>
-                        You have{" "}
-                        <span className="font-semibold">{items.length}</span>{" "}
+                        You have
+
+                        {/* Icon + Badge */}
+                        <span className="relative inline-flex items-center mx-1">
+                          <Mail className="h-5 w-5 align-middle" />
+
+                          <span className="absolute -top-1.5 -right-2 bg-purple-500 text-white text-[10px] leading-none px-1.5 py-0.5 rounded-full border-b-white border-1">
+                            {items.length}
+                          </span>
+                        </span>
+
                         notification{items.length === 1 ? "" : "s"}.
                       </>
                     ) : (

@@ -5,6 +5,8 @@ import { RequireAuth } from "@/components/RequireAuth";
 import { useAuth } from "@/components/AuthProvider";
 import { apiFetch } from "@/lib/api";
 import Link from "next/link";
+import Image from "next/image"
+import userAvatar from "@/app/assets/userAvatar.png"
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Ban,
@@ -322,7 +324,15 @@ function DashboardInner() {
         <header className="flex items-center justify-between pt-8">
           <div className="flex items-center gap-3 rounded-2xl bg-white/60 px-5 py-3 shadow-sm backdrop-blur">
             <div className="grid h-10 w-10 place-items-center rounded-xl bg-purple-100">
-              <User className="h-5 w-5 text-purple-600" />
+              <Image
+                src = {userAvatar}
+                alt="DNA Data Storage Vault"
+                width={360}
+                height={200}
+                className="object-cover rounded-2xl"
+                priority
+              />
+            
             </div>
             <div className="text-2xl font-extrabold text-purple-700">Hi, {greetingName}!</div>
           </div>

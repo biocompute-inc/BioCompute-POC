@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useState } from "react";
 import { Dna, Mail, ArrowRight } from "lucide-react";
 import DnaVaultImage from "@/app/assets/DnaVaultImage.png"
+import Input from '@mui/joy/Input';
+import Button from '@mui/joy/Button';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
 
@@ -81,40 +83,60 @@ export default function ForgotPasswordPage() {
                 </div>
               ) : (
                 <form onSubmit={onSubmit}>
-                  <label className="block text-lg font-bold text-slate-900">
+                  <label className="block text-lg font-bold text-slate-900 p-2">
                     Email
                   </label>
-
-                  <div className="mt-3 flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-[0_0_0_1px_rgba(124,58,237,0.06)] focus-within:border-violet-300 focus-within:ring-2 focus-within:ring-violet-200">
-                    <Mail className="h-5 w-5 text-slate-400" />
-                    <input
-                      className="w-full bg-transparent text-lg outline-none placeholder:text-slate-400"
+                    <Input
                       type="email"
                       value={email}
+                      variant="soft"
+                      color="neutral"
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="you@example.com"
-                      autoComplete="email"
-                      required
+                      startDecorator={<Mail size={18} className="text-slate-400" />}
+                      sx={{
+                        "--Input-minHeight": "52px",          // overall pill height
+                        "--Input-radius": "14px",             // pill rounding
+                        "--Input-paddingInline": "14px",
+                        "--Input-gap": "10px",
+                        backgroundColor: "#EEF2F6",
+                        boxShadow: "inset 0 0 0 1px #D0D7DE",
+                        p: "6px",                                
+                      }}
+                      endDecorator={
+                        <Button
+                          type="submit"
+                          variant="solid"
+                          size = "sm"
+                          disabled={state === "loading"}
+                          sx={{
+                            borderRadius: "24px",
+                            px: 3,
+                            height: "40px",
+                            fontWeight: 600,
+                            backgroundColor: email.trim()
+                              ? "#7C3AED"
+                              : "#E5E7EB",
+                            color: email.trim()
+                              ? "#ffffff"
+                              : "#374151",
+                            "&:hover": {
+                              backgroundColor: email.trim()
+                                ? "#6D28D9"
+                                : "#E5E7EB",
+                            },
+                          }}
+                        >
+                          {state === "loading" ? "Sending…" : "Send Reset Link"}
+                          <ArrowRight size={18} className="ml-1" />
+                        </Button>
+                      }
                     />
-                  </div>
-
                   {error && (
                     <div className="mt-2 text-sm font-medium text-red-600">
                       {error}
                     </div>
                   )}
-
-                  <button
-                    type="submit"
-                    disabled={state === "loading"}
-                    className="mt-8 w-full rounded-xl bg-[#9B7BD2] px-2 py-2 text-xl font-extrabold text-white shadow-sm transition hover:brightness-[1.02] active:translate-y-1px disabled:opacity-70"
-                  >
-                    <span className="inline-flex items-center justify-center gap-2">
-                      {state === "loading" ? "Sending…" : "Send reset link"}
-                      <ArrowRight className="h-5 w-5" />
-                    </span>
-                  </button>
-
                   <div className="mt-6 text-center text-base text-slate-500">
                     Remembered it?{" "}
                     <Link

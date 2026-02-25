@@ -6,6 +6,8 @@ import Loading from "@/components/Loading";
 import { RequireRole } from "@/components/RequireAuth";
 import { apiFetch } from "@/lib/api";
 import Link from "next/link";
+import Image from "next/image";
+import scientistAvatar from "@/app/assets/scientistAvatar.png";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, ClipboardList, RefreshCw, Download, ExternalLink, LogOut } from "lucide-react";
 
@@ -115,7 +117,15 @@ function ScientistJobsInner() {
         <header className="flex items-center justify-between pt-8">
           <div className="flex items-center gap-3 rounded-2xl bg-white/60 px-5 py-3 shadow-sm backdrop-blur">
             <div className="grid h-10 w-10 place-items-center rounded-xl bg-purple-100">
-              <ClipboardList className="h-5 w-5 text-purple-600" />
+              <Image
+                src={scientistAvatar}
+                alt="Scientist Avatar"
+                width={360}
+                height={200}
+                className="object-cover rounded-2xl"
+                priority
+              />
+
             </div>
             <div>
               <div className="text-2xl font-extrabold text-purple-700">

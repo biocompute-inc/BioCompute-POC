@@ -7,6 +7,8 @@ import Loading from "@/components/Loading";
 import { apiFetch } from "@/lib/api";
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
+import avatarAdmin from "@/app/assets/avatarAdmin.png";
 import { useAuth } from "@/components/AuthProvider";
 import {
   Users,
@@ -243,7 +245,14 @@ function AdminDashboardInner() {
         <header className="flex items-center justify-between pt-8">
           <div className="flex items-center gap-3 rounded-2xl bg-white/60 px-5 py-3 shadow-sm backdrop-blur">
             <div className="grid h-10 w-10 place-items-center rounded-xl bg-purple-100">
-              <UserStar className="h-5 w-5 text-purple-700" />
+              <Image
+                src={avatarAdmin}
+                alt="Admin Avatar"
+                width={360}
+                height={200}
+                className="object-cover rounded-2xl"
+                priority
+              />
             </div>
             <div>
               <div className="text-2xl font-extrabold text-purple-700">Hi {greetingName}</div>
