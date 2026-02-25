@@ -2,6 +2,7 @@
 "use client";
 
 import { RequireAuth } from "@/components/RequireAuth";
+import Loading from "@/components/Loading";
 import { apiFetch } from "@/lib/api";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -182,18 +183,7 @@ async function deleteJobConfirmed() {
 
 
   if (loading) {
-    return (
-      <main className="min-h-screen bg-slate-50">
-        <div className="mx-auto max-w-5xl px-6 py-10">
-          <div className="rounded-2xl bg-white p-6 shadow-sm">
-            <div className="flex items-center gap-3 text-sm text-gray-600">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Loading job…
-            </div>
-          </div>
-        </div>
-      </main>
-    );
+    return <Loading />;
   }
 
   if (err) {
@@ -485,3 +475,4 @@ async function deleteJobConfirmed() {
     </main>
   );
 }
+

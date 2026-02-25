@@ -2,6 +2,7 @@
 "use client";
 
 import { RequireRole } from "@/components/RequireAuth";
+import Loading from "@/components/Loading";
 import { apiFetch } from "@/lib/api";
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
@@ -308,12 +309,7 @@ function AdminDashboardInner() {
             {/* Actions row */}
             <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="text-sm text-gray-600">
-                {loading ? (
-                  <span className="inline-flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full bg-purple-500 animate-pulse" />
-                    Loading analytics…
-                  </span>
-                ) : (
+                {loading ? (<Loading />) : (
                   <span>
                     Showing <span className="font-semibold">{filteredSortedUsers.length}</span> user
                     row{filteredSortedUsers.length === 1 ? "" : "s"} and{" "}
@@ -359,7 +355,7 @@ function AdminDashboardInner() {
             <h2 className="text-xl font-extrabold text-purple-700">Users</h2>
 
             {/* Search */}
-            <div className="w-full sm:w-[360px]">
+            <div className="w-full sm:w-360px">
               <label className="text-xs font-semibold text-gray-500">Search users</label>
               <div className="mt-1 flex items-center gap-2 rounded-xl bg-white px-3 py-2 shadow-sm ring-1 ring-gray-100">
                 <Search className="h-4 w-4 text-gray-400" />
@@ -640,3 +636,4 @@ function SortableTh({
     </th>
   );
 }
+

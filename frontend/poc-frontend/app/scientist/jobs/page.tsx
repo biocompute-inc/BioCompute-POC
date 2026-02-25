@@ -2,6 +2,7 @@
 "use client";
 
 import { useAuth } from "@/components/AuthProvider";
+import Loading from "@/components/Loading";
 import { RequireRole } from "@/components/RequireAuth";
 import { apiFetch } from "@/lib/api";
 import Link from "next/link";
@@ -169,12 +170,7 @@ function ScientistJobsInner() {
             <div className="rounded-2xl bg-white p-5 shadow-sm">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="text-sm text-gray-600">
-                  {loading ? (
-                    <span className="inline-flex items-center gap-2">
-                      <span className="h-2 w-2 rounded-full bg-purple-500 animate-pulse" />
-                      Loading jobs…
-                    </span>
-                  ) : (
+                  {loading ? (<Loading />) : (
                     <span>
                       Showing <span className="font-semibold">{jobs.length}</span>{" "}
                       job{jobs.length === 1 ? "" : "s"}
@@ -317,3 +313,4 @@ function ScientistJobsInner() {
     </main>
   );
 }
+

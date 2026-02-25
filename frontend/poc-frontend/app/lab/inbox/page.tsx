@@ -2,6 +2,7 @@
 "use client";
 
 import { RequireRole } from "@/components/RequireAuth";
+import Loading from "@/components/Loading";
 import { apiFetch } from "@/lib/api";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -10,7 +11,6 @@ import {
   Bell,
   ClipboardList,
   Info,
-  Loader2,
   Sparkles,
 } from "lucide-react";
 
@@ -107,12 +107,7 @@ function InboxInner() {
               </div>
 
               <div className="mt-4 text-sm text-gray-600">
-                {loading ? (
-                  <span className="inline-flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Loading notifications…
-                  </span>
-                ) : (
+                {loading ? null : (
                   <span>
                     {hasItems ? (
                       <>
@@ -148,27 +143,7 @@ function InboxInner() {
         {/* Body */}
         <section className="mt-6">
           {/* Loading skeletons */}
-          {loading && (
-            <div className="space-y-3">
-              {[0, 1, 2].map((i) => (
-                <div
-                  key={i}
-                  className="rounded-2xl bg-white p-5 shadow-sm"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-3">
-                      <div className="h-10 w-10 rounded-2xl bg-gray-100 animate-pulse" />
-                      <div className="space-y-2">
-                        <div className="h-4 w-24 rounded bg-gray-100 animate-pulse" />
-                        <div className="h-4 w-72 rounded bg-gray-100 animate-pulse" />
-                      </div>
-                    </div>
-                    <div className="h-4 w-20 rounded bg-gray-100 animate-pulse" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          {loading && <Loading />}
 
           {/* Empty state */}
           {!loading && !err && items.length === 0 && (
@@ -255,3 +230,4 @@ function InboxInner() {
     </main>
   );
 }
+
