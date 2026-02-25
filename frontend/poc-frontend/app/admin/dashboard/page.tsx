@@ -7,10 +7,7 @@ import { apiFetch } from "@/lib/api";
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import Link from "next/link";
 import {
-  ArrowLeft,
-  BarChart3,
   Users,
   UserCog,
   RefreshCw,
@@ -416,7 +413,7 @@ function AdminDashboardInner() {
                     <tr key={u.user_id} className="border-b border-gray-100 last:border-b-0">
                       <td className="px-6 py-5 text-sm text-gray-800">{u.display_name || "-"}</td>
                       <td className="px-6 py-5 text-sm text-gray-700">
-                        <div className="max-w-[420px] truncate">{u.email}</div>
+                        <div className="max-w-420px truncate">{u.email}</div>
                       </td>
                       <td className="px-6 py-5 text-sm text-gray-700 text-right tabular-nums">
                         {u.total_files}
@@ -527,7 +524,7 @@ function AdminDashboardInner() {
                     <tr key={s.user_id} className="border-b border-gray-100 last:border-b-0">
                       <td className="px-6 py-5 text-sm text-gray-800">{s.display_name || "-"}</td>
                       <td className="px-6 py-5 text-sm text-gray-700">
-                        <div className="max-w-[420px] truncate">{s.email}</div>
+                        <div className="max-w-420px truncate">{s.email}</div>
                       </td>
                       <td className="px-6 py-5 text-sm text-gray-700 capitalize">{s.role}</td>
                       <td className="px-6 py-5 text-sm">
