@@ -8,6 +8,7 @@ import Link from "next/link";
 import Image from "next/image"
 import userAvatar from "@/app/assets/userAvatar.png"
 import { useEffect, useMemo, useRef, useState } from "react";
+import Counter from "@/components/Counter";
 import {
   Ban,
   Database,
@@ -18,7 +19,6 @@ import {
   PanelLeftOpen,
   Plus,
   Trash2,
-  User,
   AlertTriangle,
 } from "lucide-react";
 
@@ -400,7 +400,11 @@ function DashboardInner() {
                 <div className="flex items-start justify-between">
                   <div>
                     <div className="text-3xl font-extrabold text-gray-900">
-                      {summary?.total_files ?? "—"}
+                      {summary?.total_files !== undefined ? (
+                        <Counter value={summary.total_files} />
+                      ) : (
+                        "—"
+                      ) }
                     </div>
                     <div className="mt-1 text-sm text-gray-500">Total Files</div>
                   </div>
@@ -414,7 +418,14 @@ function DashboardInner() {
                 <div className="flex items-start justify-between">
                   <div>
                     <div className="text-3xl font-extrabold text-gray-900">
-                      {summary ? formatBytes(summary.total_storage_bytes) : "—"}
+                      {summary?.total_storage_bytes !== undefined ? (
+                          <Counter
+                            value={summary.total_storage_bytes}
+                            formatter={(val) => formatBytes(val)}
+                          />
+                        ) : (
+                          "—"
+                        )}
                     </div>
                     <div className="mt-1 text-sm text-gray-500">Total Storage</div>
                   </div>
@@ -428,7 +439,11 @@ function DashboardInner() {
                 <div className="flex items-start justify-between">
                   <div>
                     <div className="text-3xl font-extrabold text-gray-900">
-                      {summary?.total_retrievals ?? "—"}
+                      {summary?.total_retrievals !== undefined ? (
+                        <Counter value={summary.total_retrievals} />
+                      ) : (
+                        "—"
+                      )}
                     </div>
                     <div className="mt-1 text-sm text-gray-500">Total Retrievals</div>
                   </div>

@@ -9,7 +9,7 @@ import Link from "next/link";
 import Image from "next/image";
 import scientistAvatar from "@/app/assets/scientistAvatar.png";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, ClipboardList, RefreshCw, Download, ExternalLink, LogOut } from "lucide-react";
+import { ArrowLeft, RefreshCw, Download, ExternalLink, LogOut } from "lucide-react";
 
 type ScientistJob = {
   id: string;
