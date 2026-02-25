@@ -12,7 +12,6 @@ import Link from "next/link";
 import {
   ArrowLeft,
   CheckCircle2,
-  FileCode,
   FileDown,
   FileText,
   Info,
@@ -109,10 +108,6 @@ function JobDetailInner() {
   const [deleting, setDeleting] = useState(false);
   const openDeleteBtnRef = useRef<HTMLButtonElement | null>(null);
 
-  const canDownloadProtocol = useMemo(
-    () => Boolean(job?.protocol_download_url),
-    [job]
-  );
   const canDownloadFile = useMemo(
     () => Boolean(job?.plaintext_path_download_url),
     [job]
