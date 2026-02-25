@@ -308,7 +308,7 @@ async function deleteJobConfirmed() {
 
               {/* Downloads */}
               <div className="mt-5 space-y-3">
-                {canDownloadProtocol ? (
+                {/* {canDownloadProtocol ? (
                   <button
                     type="button"
                     onClick={async () => {
@@ -333,7 +333,7 @@ async function deleteJobConfirmed() {
                   <div className="rounded-xl border border-dashed border-gray-200 bg-white p-4 text-sm text-gray-500">
                     No protocol attached.
                   </div>
-                )}
+                )} */}
 
                 {canDownloadFile ? (
                   <button

@@ -6,8 +6,9 @@ import { useAuth } from "@/components/AuthProvider";
 import { apiFetch } from "@/lib/api";
 import Link from "next/link";
 import Image from "next/image"
-import userAvatar from "@/app/assets/userAvatar.png"
+import avator1 from "@/app/assets/avator1.png"
 import { useEffect, useMemo, useRef, useState } from "react";
+import UserProfileModal from "@/components/UserProfileModal";
 import Counter from "@/components/Counter";
 import {
   Ban,
@@ -262,6 +263,8 @@ function DashboardInner() {
 
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [openProfile, setOpenProfile] = useState(false);
+
 
   const openDeleteBtnRef = useRef<HTMLButtonElement | null>(null);
 
@@ -322,21 +325,23 @@ function DashboardInner() {
       <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8 pb-24">
         {/* Header */}
         <header className="flex items-center justify-between pt-8">
-          <div className="flex items-center gap-3 rounded-2xl bg-white/60 px-5 py-3 shadow-sm backdrop-blur">
+          <button type="button"
+            onClick={() => setOpenProfile(true)}
+            className="flex  items-center gap-3 rounded-2xl bg-white/60 px-5 py-3 shadow-sm backdrop-blur text-left hover:bg-white/70">
             <div className="grid h-10 w-10 place-items-center rounded-xl bg-purple-100">
               <Image
-                src = {userAvatar}
+                src = {avator1}
                 alt="DNA Data Storage Vault"
                 width={360}
                 height={200}
                 className="object-cover rounded-2xl"
                 priority
               />
-            
             </div>
-            <div className="text-2xl font-extrabold text-purple-700">Hi, {greetingName}!</div>
-          </div>
-
+            <div className="text-2xl font-extrabold text-purple-700">Hi, {greetingName ?? "there"}!</div>
+            
+          </button>
+          <UserProfileModal open={openProfile} onClose={() => setOpenProfile(false)} />
           <div className="flex items-center gap-3">
             <button
               type="button"

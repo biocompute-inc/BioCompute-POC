@@ -402,7 +402,7 @@ async function pushToOT2() {
                 )}
               </div>
 
-              <div className="mt-5">
+              {/* <div className="mt-5">
                 {job?.plaintext_path_download_url ? (
                   <button
                     type="button"
@@ -429,7 +429,7 @@ async function pushToOT2() {
                     No File Found.
                   </div>
                 )}
-              </div>
+              </div> */}
             </div>
 
             {/* Optional action */}
