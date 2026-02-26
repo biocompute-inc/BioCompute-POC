@@ -34,8 +34,16 @@ export default function JobDetailPage() {
 
 
 
-function StatusPill({ status }: { status: string }) {
+function StatusPill({
+  status,
+  accuracyPercent,
+}: {
+  status: string;
+  accuracyPercent?: number | null;
+}) {
   const s = (status || "").toUpperCase();
+  const hasAccuracy = typeof accuracyPercent === "number";
+  const accuracyLabel = hasAccuracy ? `${accuracyPercent.toFixed(2)}% Accuracy` : null;
 
   const base =
     "inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold ring-1";
@@ -44,7 +52,7 @@ function StatusPill({ status }: { status: string }) {
     return (
       <span className={`${base} bg-green-50 text-green-700 ring-green-200`}>
         <CheckCircle2 className="h-4 w-4" />
-        Retrived
+        {hasAccuracy ? `Retrived with ${accuracyLabel}` : "Retrived"}
       </span>
     );
   }
@@ -212,7 +220,7 @@ async function deleteJobConfirmed() {
               <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-gray-900">
                 <div className="text-2xl font-extrabold text-neutral-700">Welcome, {greetingName}!</div>
               </h1>
-              <StatusPill status={job?.status} />
+              <StatusPill status={job?.status} accuracyPercent={job?.accuracy_percent} />
               
             </div>
               <p className="py-3">Here You can see the detailed status of File {job?.original_filename}</p>
@@ -297,6 +305,15 @@ async function deleteJobConfirmed() {
                   <div className="text-xs text-gray-500">File ID</div>
                   <div className="mt-1 font-mono text-gray-900">
                     {job?.file_id ?? "-"}
+                  </div>
+                </div>
+
+                <div className="rounded-xl bg-slate-50 p-3">
+                  <div className="text-xs text-gray-500">Accuracy</div>
+                  <div className="mt-1 font-mono text-gray-900">
+                    {typeof job?.accuracy_percent === "number"
+                      ? `${job.accuracy_percent.toFixed(2)}%`
+                      : "-"}
                   </div>
                 </div>
               </div>

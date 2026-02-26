@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import shutil
 import uuid
 from pathlib import Path
@@ -227,6 +228,15 @@ def get_job(job_id: str, request: Request, db: OrmSession = Depends(get_db)):
         .order_by(JobEvent.created_at.asc())
         .all()
     )
+    accuracy_percent = None
+    if j.result_summary_json_path:
+        try:
+            summary_path = Path(j.result_summary_json_path)
+            if summary_path.exists():
+                summary = json.loads(summary_path.read_text(encoding="utf-8"))
+                accuracy_percent = summary.get("accuracy_percent")
+        except Exception:
+            accuracy_percent = None
 
     return {
         "id": j.id,
@@ -240,6 +250,8 @@ def get_job(job_id: str, request: Request, db: OrmSession = Depends(get_db)):
         "plaintext_path_download_url": f"/jobs/{j.id}/plaintext",
         "error_code": j.error_code,
         "error_message": j.error_message,
+        "match": j.match,
+        "accuracy_percent": accuracy_percent,
         "created_at": j.created_at.isoformat() if j.created_at else None,
         "updated_at": j.updated_at.isoformat() if j.updated_at else None,
         "events": [
