@@ -71,7 +71,7 @@ export default function UserProfileModal({
             className="rounded-xl bg-purple-500 px-4 py-2 text-sm text-white hover:opacity-90"
             onClick={() => {
               onClose();
-              router.push("/profile");
+              router.push("/user/profile");
             }}
           >
             Update profile

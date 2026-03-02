@@ -1,2 +1,73 @@
 @import "tailwindcss";
 
+@keyframes blob-drift {
+
+    0%,
+    100% {
+        transform: translate(0, 0) scale(1);
+    }
+
+    33% {
+        transform: translate(40px, -30px) scale(1.05);
+    }
+
+    66% {
+        transform: translate(-20px, 20px) scale(0.97);
+    }
+}
+
+@keyframes blob-drift-reverse {
+
+    0%,
+    100% {
+        transform: translate(0, 0) scale(1);
+    }
+
+    33% {
+        transform: translate(-40px, 30px) scale(1.04);
+    }
+
+    66% {
+        transform: translate(20px, -20px) scale(0.98);
+    }
+}
+
+@keyframes pulse-slow {
+
+    0%,
+    100% {
+        opacity: 0.2;
+    }
+
+    50% {
+        opacity: 0.45;
+    }
+}
+
+@keyframes float {
+
+    0%,
+    100% {
+        transform: translateY(0px);
+    }
+
+    50% {
+        transform: translateY(-18px);
+    }
+}
+
+.animate-blob-drift {
+    animation: blob-drift 12s ease-in-out infinite;
+}
+
+.animate-blob-drift-reverse {
+    animation: blob-drift-reverse 14s ease-in-out infinite;
+}
+
+.animate-pulse-slow {
+    animation: pulse-slow 4s ease-in-out infinite;
+}
+
+.animate-float {
+    animation: float 6s ease-in-out infinite;
+}

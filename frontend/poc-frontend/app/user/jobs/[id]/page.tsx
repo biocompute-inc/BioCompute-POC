@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { RequireAuth } from "@/components/RequireAuth";
+import { RequireRole } from "@/components/RequireAuth";
 import Loading from "@/components/Loading";
 import { apiFetch } from "@/lib/api";
 import { useParams } from "next/navigation";
@@ -26,9 +26,9 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE // keep consistent everywhere 
 
 export default function JobDetailPage() {
   return (
-    <RequireAuth>
+    <RequireRole allowed={["user"]}>
       <JobDetailInner />
-    </RequireAuth>
+    </RequireRole>
   );
 }
 
@@ -120,18 +120,18 @@ function JobDetailInner() {
     () => Boolean(job?.plaintext_path_download_url),
     [job]
   );
-  const { user} = useAuth();
+  const { user } = useAuth();
 
   const greetingName = useMemo(() => {
-    return  user?.display_name || user?.email || "User";
-  }, [ user]);
+    return user?.display_name || user?.email || "User";
+  }, [user]);
   const canDelete = useMemo(() => {
-  const s = String(job?.status || "").trim().toLowerCase();
-  if (s.includes("encoding") || s.includes("decoding") || s.includes("processing")) {
-    return false;
-  }
-  return ["failed", "completed", "stored", "retrieved"].includes(s);
-}, [job?.status]);
+    const s = String(job?.status || "").trim().toLowerCase();
+    if (s.includes("encoding") || s.includes("decoding") || s.includes("processing")) {
+      return false;
+    }
+    return ["failed", "completed", "stored", "retrieved"].includes(s);
+  }, [job?.status]);
 
 
   useEffect(() => {
@@ -155,32 +155,32 @@ function JobDetailInner() {
     };
   }, [id]);
 
-async function deleteJobConfirmed() {
-  if (!job?.id || deleting) return;
+  async function deleteJobConfirmed() {
+    if (!job?.id || deleting) return;
 
-  setDeleting(true);
-  setErr(null);
-  setMsg(null);
+    setDeleting(true);
+    setErr(null);
+    setMsg(null);
 
-  try {
-    await apiFetch(`/jobs/${job.id}`, { method: "DELETE" });
+    try {
+      await apiFetch(`/jobs/${job.id}`, { method: "DELETE" });
 
-    setMsg("Job deleted successfully. Redirecting to dashboard…");
-    setRedirecting(true);
+      setMsg("Job deleted successfully. Redirecting to dashboard…");
+      setRedirecting(true);
 
-    // Soft delay so user sees confirmation
-    setTimeout(() => {
-      window.location.href = "/dashboard";
-    }, 1200);
+      // Soft delay so user sees confirmation
+      setTimeout(() => {
+        window.location.href = "/user/dashboard";
+      }, 1200);
 
-  } catch (e: any) {
-    setErr(e.message);
-  } finally {
-    setDeleting(false);
-    setShowDeleteConfirm(false);
-    openDeleteBtnRef.current?.focus();
+    } catch (e: any) {
+      setErr(e.message);
+    } finally {
+      setDeleting(false);
+      setShowDeleteConfirm(false);
+      openDeleteBtnRef.current?.focus();
+    }
   }
-}
 
 
 
@@ -198,7 +198,7 @@ async function deleteJobConfirmed() {
           </div>
           <div className="mt-4">
             <Link
-              href="/dashboard"
+              href="/user/dashboard"
               className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-gray-800 shadow-sm hover:bg-gray-50"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -221,20 +221,20 @@ async function deleteJobConfirmed() {
                 <div className="text-2xl font-extrabold text-neutral-700">Welcome, {greetingName}!</div>
               </h1>
               <StatusPill status={job?.status} accuracyPercent={job?.accuracy_percent} />
-              
+
             </div>
-              <p className="py-3">Here You can see the detailed status of File {job?.original_filename}</p>
+            <p className="py-3">Here You can see the detailed status of File {job?.original_filename}</p>
             <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-gray-600">
               <span className="rounded-lg bg-white px-3 py-1 shadow-sm">
                 <span className="text-gray-400">ID:</span>{" "}
                 <span className="font-mono text-gray-800">{job?.id}</span>
               </span>
 
-              {job?.assigned_to && (
+              {job?.assigned_to_email && (
                 <span className="rounded-lg bg-white px-3 py-1 shadow-sm">
                   <span className="text-gray-400">Assigned:</span>{" "}
                   <span className="font-medium text-gray-800">
-                    {job?.assigned_to}
+                    {job?.assigned_to_email}
                   </span>
                 </span>
               )}
@@ -242,7 +242,7 @@ async function deleteJobConfirmed() {
           </div>
 
           <Link
-            href="/dashboard"
+            href="/user/dashboard"
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-gray-800 shadow-sm hover:bg-gray-50"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -290,7 +290,7 @@ async function deleteJobConfirmed() {
                 <div className="rounded-xl bg-slate-50 p-3">
                   <div className="text-xs text-gray-500">Scientist Assigned</div>
                   <div className="mt-1 font-mono text-gray-900">
-                    {job?.assigned_to ?? "-"}
+                    {job?.assigned_to_email ?? "-"}
                   </div>
                 </div>
 
@@ -374,30 +374,30 @@ async function deleteJobConfirmed() {
                   </div>
                 )}
                 {canDelete ? (
-                    <button
-                      ref={openDeleteBtnRef}
-                      type="button"
-                      onClick={() => {
-                        setErr(null);
-                        setShowDeleteConfirm(true);
-                      }}
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-red-600! px-4 py-2.5 text-sm font-semibold text-white! hover:bg-red-700 cursor-pointer select-none appearance-none border-0 focus:outline-none focus:ring-2 focus:ring-red-300"
-                    >
-                      <Shredder className="h-4 w-4" />
-                      Delete job
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      disabled
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gray-200! px-4 py-2.5 text-sm font-semibold text-gray-500! cursor-not-allowed select-none appearance-none border-0"
-                      title={`Job is currently "${job?.status}". You can delete only after it finishes.`}
-                    >
-                      <Trash className="h-4 w-4" />
-                      Delete job
-                    </button>
-                    
-                  )}
+                  <button
+                    ref={openDeleteBtnRef}
+                    type="button"
+                    onClick={() => {
+                      setErr(null);
+                      setShowDeleteConfirm(true);
+                    }}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-red-600! px-4 py-2.5 text-sm font-semibold text-white! hover:bg-red-700 cursor-pointer select-none appearance-none border-0 focus:outline-none focus:ring-2 focus:ring-red-300"
+                  >
+                    <Shredder className="h-4 w-4" />
+                    Delete job
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gray-200! px-4 py-2.5 text-sm font-semibold text-gray-500! cursor-not-allowed select-none appearance-none border-0"
+                    title={`Job is currently "${job?.status}". You can delete only after it finishes.`}
+                  >
+                    <Trash className="h-4 w-4" />
+                    Delete job
+                  </button>
+
+                )}
               </div>
             </div>
 
@@ -461,7 +461,7 @@ async function deleteJobConfirmed() {
         {/* Footer back link (optional since top already has one) */}
         <div className="mt-8">
           <Link
-            href="/dashboard"
+            href="/user/dashboard"
             className="text-sm font-medium text-gray-500 hover:underline"
           >
             ← Back to dashboard

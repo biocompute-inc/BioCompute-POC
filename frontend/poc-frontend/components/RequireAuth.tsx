@@ -28,7 +28,20 @@ export function RequireRole({
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && (!user || !allowed.includes(user.role))) router.push("/dashboard");
+    if (loading) return;
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+    if (!allowed.includes(user.role)) {
+      const home =
+        user.role === "admin"
+          ? "/admin/dashboard"
+          : user.role === "scientist"
+            ? "/scientist/jobs"
+            : "/user/dashboard";
+      router.push(home);
+    }
   }, [loading, user, router, allowed]);
 
   if (loading) return <div style={{ padding: 16 }}>Loading...</div>;

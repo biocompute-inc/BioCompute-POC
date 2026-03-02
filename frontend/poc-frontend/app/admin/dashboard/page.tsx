@@ -181,10 +181,10 @@ function AdminDashboardInner() {
     const q = userQuery.trim().toLowerCase();
     const filtered = q
       ? users.filter((u) => {
-          const name = (u.display_name || "").toLowerCase();
-          const email = (u.email || "").toLowerCase();
-          return name.includes(q) || email.includes(q);
-        })
+        const name = (u.display_name || "").toLowerCase();
+        const email = (u.email || "").toLowerCase();
+        return name.includes(q) || email.includes(q);
+      })
       : users;
 
     const { key, dir } = usersSort;
@@ -195,10 +195,10 @@ function AdminDashboardInner() {
     const q = staffQuery.trim().toLowerCase();
     const filteredByQuery = q
       ? staff.filter((s) => {
-          const name = (s.display_name || "").toLowerCase();
-          const email = (s.email || "").toLowerCase();
-          return name.includes(q) || email.includes(q);
-        })
+        const name = (s.display_name || "").toLowerCase();
+        const email = (s.email || "").toLowerCase();
+        return name.includes(q) || email.includes(q);
+      })
       : staff;
 
     const filteredByStatus =
@@ -339,7 +339,7 @@ function AdminDashboardInner() {
 
                 <button
                   type="button"
-                  onClick={() => router.push("/admin")}
+                  onClick={() => router.push("/admin/users")}
                   className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-purple-700 shadow-sm ring-1 ring-purple-200 hover:bg-purple-50"
                 >
                   <UserPlus className="h-4 w-4" />

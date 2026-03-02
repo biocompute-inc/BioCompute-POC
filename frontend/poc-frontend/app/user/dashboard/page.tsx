@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { RequireAuth } from "@/components/RequireAuth";
+import { RequireRole } from "@/components/RequireAuth";
 import { useAuth } from "@/components/AuthProvider";
 import { apiFetch } from "@/lib/api";
 import Link from "next/link";
@@ -35,9 +35,9 @@ function formatBytes(bytes: number) {
 
 export default function DashboardPage() {
   return (
-    <RequireAuth>
+    <RequireRole allowed={["user"]}>
       <DashboardInner />
-    </RequireAuth>
+    </RequireRole>
   );
 }
 
@@ -84,7 +84,7 @@ function ActionCell({
   if (isStored) {
     return (
       <Link
-        href={`/jobs/${jobId}?mode=retrieve`}
+        href={`/user/jobs/${jobId}?mode=retrieve`}
         className="inline-flex items-center gap-2 whitespace-nowrapfont-medium text-purple-600 hover:text-purple-700"
       >
         <DownloadIcon className="h-4 w-4" />
@@ -111,7 +111,7 @@ function ActionCell({
   if (jobId) {
     return (
       <Link
-        href={`/jobs/${jobId}?mode=view`}
+        href={`/user/jobs/${jobId}?mode=view`}
         className="inline-flex items-center gap-2 whitespace-nowrap font-medium text-purple-600 hover:text-purple-700"
       >
         <PanelLeftOpen className="h-4 w-4" />
@@ -330,7 +330,7 @@ function DashboardInner() {
             className="flex  items-center gap-3 rounded-2xl bg-white/60 px-5 py-3 shadow-sm backdrop-blur text-left hover:bg-white/70">
             <div className="grid h-10 w-10 place-items-center rounded-xl bg-purple-100">
               <Image
-                src = {avator1}
+                src={avator1}
                 alt="DNA Data Storage Vault"
                 width={360}
                 height={200}
@@ -339,7 +339,7 @@ function DashboardInner() {
               />
             </div>
             <div className="text-2xl font-extrabold text-purple-700">Hi, {greetingName ?? "there"}!</div>
-            
+
           </button>
           <UserProfileModal open={openProfile} onClose={() => setOpenProfile(false)} />
           <div className="flex items-center gap-3">
@@ -409,7 +409,7 @@ function DashboardInner() {
                         <Counter value={summary.total_files} />
                       ) : (
                         "—"
-                      ) }
+                      )}
                     </div>
                     <div className="mt-1 text-sm text-gray-500">Total Files</div>
                   </div>
@@ -424,13 +424,13 @@ function DashboardInner() {
                   <div>
                     <div className="text-3xl font-extrabold text-gray-900">
                       {summary?.total_storage_bytes !== undefined ? (
-                          <Counter
-                            value={summary.total_storage_bytes}
-                            formatter={(val) => formatBytes(val)}
-                          />
-                        ) : (
-                          "—"
-                        )}
+                        <Counter
+                          value={summary.total_storage_bytes}
+                          formatter={(val) => formatBytes(val)}
+                        />
+                      ) : (
+                        "—"
+                      )}
                     </div>
                     <div className="mt-1 text-sm text-gray-500">Total Storage</div>
                   </div>
@@ -464,7 +464,7 @@ function DashboardInner() {
         {/* Quick Links */}
         <section className="mt-8 flex flex-wrap items-center gap-3">
           <Link
-            href="/new-job"
+            href="/user/new-job"
             className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-purple-700 shadow-sm hover:bg-white/80"
           >
             <Plus className="h-4 w-4" />
@@ -473,7 +473,7 @@ function DashboardInner() {
 
           {(user?.role === "scientist" || user?.role === "admin") && (
             <Link
-              href="/lab/inbox"
+              href="/scientist/inbox"
               className="inline-flex items-center rounded-xl bg-white px-4 py-2.5 text-purple-700 shadow-sm hover:bg-white/80"
             >
               <span className="font-medium">Lab Inbox</span>
@@ -557,7 +557,7 @@ function DashboardInner() {
 
       {/* FAB */}
       <Link
-        href="/new-job"
+        href="/user/new-job"
         className="fixed bottom-6 right-6 inline-flex items-center gap-2 rounded-2xl bg-purple-600 px-5 py-3 text-white shadow-lg hover:bg-purple-700"
         aria-label="Upload a File"
       >

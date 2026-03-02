@@ -167,7 +167,7 @@ function InboxInner() {
                 Either things are going well, or nothing has started yet.
               </p>
               <Link
-                href="/dashboard"
+                href="/scientist/jobs"
                 className="mt-6 inline-flex items-center justify-center rounded-xl bg-purple-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-purple-700"
               >
                 Go to dashboard
@@ -222,7 +222,7 @@ function InboxInner() {
 
                       {n.job_id && (
                         <Link
-                          href={`/lab/jobs/${n.job_id}`}
+                          href={`/scientist/jobs/${n.job_id}`}
                           className="inline-flex items-center justify-center rounded-xl bg-white px-4 py-2 text-sm font-semibold text-purple-700 ring-1 ring-purple-200 hover:bg-purple-50"
                         >
                           Open job →

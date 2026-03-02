@@ -118,8 +118,8 @@ function LabJobInner() {
   const [pushing, setPushing] = useState(false);
 
   const greetingName = useMemo(() => {
-      return  user?.display_name || user?.email || "User";
-  }, [ user]);
+    return user?.display_name || user?.email || "User";
+  }, [user]);
 
   useEffect(() => {
     let cancelled = false;
@@ -143,9 +143,9 @@ function LabJobInner() {
   }, [id]);
 
   async function refreshJob() {
-  const data = await apiFetch(`/jobs/${id}`);
-  setJob(data);
-}
+    const data = await apiFetch(`/jobs/${id}`);
+    setJob(data);
+  }
 
   async function uploadBam() {
     if (!bam || uploading) return;
@@ -197,40 +197,40 @@ function LabJobInner() {
       setCompleting(false);
     }
   }
-async function pushToOT2() {
-  if (pushing) return;
+  async function pushToOT2() {
+    if (pushing) return;
 
-  setErr(null);
-  setMsg(null);
-  setPushMsg(null);
-  setPushing(true);
+    setErr(null);
+    setMsg(null);
+    setPushMsg(null);
+    setPushing(true);
 
-  try {
-    const res = await fetch(`http://localhost:8000/jobs/${id}/push-to-ot2`, {
-      method: "POST",
-      credentials: "include",
-    });
+    try {
+      const res = await fetch(`http://localhost:8000/jobs/${id}/push-to-ot2`, {
+        method: "POST",
+        credentials: "include",
+      });
 
-    if (!res.ok) {
-      throw new Error(await res.text());
-    }
+      if (!res.ok) {
+        throw new Error(await res.text());
+      }
 
-    const data = await res.json();
+      const data = await res.json();
 
-    // show message
-    setPushMsg(
-      data?.message ||
+      // show message
+      setPushMsg(
+        data?.message ||
         "Pushed to OT-2 (placeholder). When you add IP/key/command, this will run SSH."
-    );
+      );
 
-    // refresh job (status/events might have changed)
-    await refreshJob();
-  } catch (e: any) {
-    setErr(e.message);
-  } finally {
-    setPushing(false);
+      // refresh job (status/events might have changed)
+      await refreshJob();
+    } catch (e: any) {
+      setErr(e.message);
+    } finally {
+      setPushing(false);
+    }
   }
-}
 
   const canMarkComplete = useMemo(() => {
     return (
@@ -255,7 +255,7 @@ async function pushToOT2() {
           </div>
           <div className="mt-4">
             <Link
-              href="/lab/inbox"
+              href="/scientist/inbox"
               className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-gray-800 shadow-sm hover:bg-gray-50"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -297,7 +297,7 @@ async function pushToOT2() {
           </div>
 
           <Link
-            href="/lab/inbox"
+            href="/scientist/inbox"
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-gray-800 shadow-sm hover:bg-gray-50"
           >
             <ArrowLeft className="h-4 w-4" />

@@ -5,7 +5,7 @@ import { useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import DnaVaultImage from "@/app/assets/DnaVaultImage.png"
+import DnaVaultImage from "@/app/assets/DeviceEditedFinalNoBG.png"
 
 export default function RegisterPage() {
   const [name, setName] = useState("");
@@ -150,7 +150,7 @@ export default function RegisterPage() {
       </div>
 
       {/* RIGHT PANEL */}
-      
+
       <div className="hidden lg:flex items-center justify-center overflow-hidden">
         <Image
           src={DnaVaultImage}
@@ -161,7 +161,7 @@ export default function RegisterPage() {
           className="object-cover rounded-2xl"
           priority
         />
-    </div>
+      </div>
     </div>
   );
 }

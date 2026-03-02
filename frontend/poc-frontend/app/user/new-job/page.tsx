@@ -1,14 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { RequireAuth } from "@/components/RequireAuth";
+import { RequireRole } from "@/components/RequireAuth";
 import { useState } from "react";
 
 export default function NewJobPage() {
   return (
-    <RequireAuth>
+    <RequireRole allowed={["user"]}>
       <NewJobInner />
-    </RequireAuth>
+    </RequireRole>
   );
 }
 
@@ -41,7 +41,7 @@ function NewJobInner() {
 
       const data = await res.json();
       setMsg(`Created job: ${data.job_id}`);
-      window.location.href = `/jobs/${data.job_id}`;
+      window.location.href = `/user/jobs/${data.job_id}`;
     } catch (e: any) {
       setErr(e.message);
     } finally {
@@ -89,7 +89,7 @@ function NewJobInner() {
           </button>
 
           <a
-            href="/dashboard"
+            href="/user/dashboard"
             className="text-sm font-medium text-gray-500 hover:underline"
           >
             Back to dashboard

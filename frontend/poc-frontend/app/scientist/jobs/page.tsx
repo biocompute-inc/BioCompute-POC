@@ -35,7 +35,7 @@ function Badge({ status }: { status: string }) {
 
   if (s.includes("complete") || s.includes("done") || s.includes("success")) {
     return <span className={`${base} bg-green-50 text-green-700`}>Completed</span>;
-    }
+  }
   if (s.includes("fail") || s.includes("error")) {
     return <span className={`${base} bg-red-50 text-red-700`}>Failed</span>;
   }
@@ -67,7 +67,7 @@ function ResultPill({ match }: { match: boolean | null }) {
 
 function ScientistJobsInner() {
   const { user, logout } = useAuth();
-  
+
   const [jobs, setJobs] = useState<ScientistJob[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -144,7 +144,7 @@ function ScientistJobsInner() {
             <span className="font-medium">Log Out</span>
           </button>
 
-          
+
         </header>
 
         {/* Banner */}
@@ -288,7 +288,7 @@ function ScientistJobsInner() {
 
                       <td className="px-6 py-5 text-sm">
                         <Link
-                          href={`/lab/jobs/${j.id}`}
+                          href={`/scientist/jobs/${j.id}`}
                           className="inline-flex items-center gap-2 font-medium text-purple-600 hover:text-purple-700"
                         >
                           <ExternalLink className="h-4 w-4" />
@@ -312,9 +312,9 @@ function ScientistJobsInner() {
         </section>
         <div className="mt-8">
           <Link
-            href="/lab/inbox"
+            href="/scientist/inbox"
             className="inline-flex items-center gap-2 rounded-xl bg-white/60 px-4 py-2.5 text-purple-600 shadow-sm backdrop-blur hover:bg-white/80"
-            >
+          >
             <ArrowLeft className="h-4 w-4" />
             <span className="font-medium">Back to Lab Inbox</span>
           </Link>

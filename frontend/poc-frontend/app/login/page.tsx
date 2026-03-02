@@ -5,10 +5,10 @@ import { useState } from "react";
 import { apiFetch } from "@/lib/api"; // Keep your existing imports
 import { useAuth } from "@/components/AuthProvider";
 import { useRouter } from "next/navigation";
-import { Dna, Mail, Lock, LogIn} from "lucide-react";
+import { Dna, Mail, Lock, LogIn } from "lucide-react";
 import Link from "next/link"; // Better for Next.js navigation
 import Image from "next/image";
-import DnaVaultImage from "@/app/assets/DnaVaultImage.png"
+import DnaVaultImage from "@/app/assets/DeviceEditedFinalNoBG.png"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -16,7 +16,7 @@ export default function LoginPage() {
   const [showPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false); // Added loading state
-  
+
   const { refresh } = useAuth();
   const router = useRouter();
 
@@ -30,16 +30,16 @@ export default function LoginPage() {
         method: "POST",
         body: JSON.stringify({ email, password }),
       });
-      
+
       const u = (await refresh()) as any;
-      
+
       // Routing logic based on role
       if (u.role === "scientist") {
         router.push("/scientist/jobs");
       } else if (u.role === "admin") {
         router.push("/admin/dashboard");
       } else {
-        router.push("/dashboard");
+        router.push("/user/dashboard");
       }
     } catch (err: any) {
       setError(err.message || "Something went wrong. Please try again.");
@@ -50,11 +50,11 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen lg:h-screen grid grid-cols-1 lg:grid-cols-2 bg-[#F5E6FA] overflow-hidden">
-      
+
       {/* LEFT PANEL (Form) */}
       <div className="flex flex-col justify-center px-8 py-6 lg:py-12 lg:px-20 xl:px-24">
         <div className="w-full max-w-440px mx-auto">
-          
+
           {/* Logo Section */}
           <div className="mb-10">
             <div className="flex items-center gap-3">
@@ -67,7 +67,7 @@ export default function LoginPage() {
                 BioCompute
               </span>
             </div>
-            
+
             <div className="mt-8 space-y-2">
               <h1 className="text-2xl font-bold text-purple-700">
                 Welcome back!
@@ -80,13 +80,13 @@ export default function LoginPage() {
 
           {/* Form Section */}
           <form onSubmit={onSubmit} className="space-y-5">
-            
+
             {/* Email Field */}
             <div>
               <label htmlFor="email" className="block text-sm font-bold text-gray-800 mb-3">
                 Email
               </label>
-              
+
               <div className="relative">
                 <input
                   id="email"
@@ -101,42 +101,42 @@ export default function LoginPage() {
               </div>
             </div>
             {/* Password Field */}
-              <div className="space-y-1.5">
-                  <div className="flex items-center justify-between mb-3">
-                    <label htmlFor="password" className="block text-sm font-bold text-gray-800">
-                      Password
-                    </label>
-                  </div>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between mb-3">
+                <label htmlFor="password" className="block text-sm font-bold text-gray-800">
+                  Password
+                </label>
+              </div>
 
-                  <div className="relative">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                    <input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full bg-white border border-gray-200 rounded-lg pl-12 pr-12 py-2.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-transparent transition"
-                      required
-                    />
-                  </div>
+              <div className="relative">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full bg-white border border-gray-200 rounded-lg pl-12 pr-12 py-2.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-transparent transition"
+                  required
+                />
+              </div>
 
-                  <div className="flex justify-end">
-                    <Link
-                      href="/forgot-password"
-                      className="text-xs font-bold text-purple-700 hover:text-purple-800 transition-colors"
-                    >
-                      Forgot Password?
-                    </Link>
-                  </div>
-                </div>
+              <div className="flex justify-end">
+                <Link
+                  href="/forgot-password"
+                  className="text-xs font-bold text-purple-700 hover:text-purple-800 transition-colors"
+                >
+                  Forgot Password?
+                </Link>
+              </div>
+            </div>
 
-              {/* Error Message */}
-              {error && (
-                <div className="rounded-lg bg-red-50 border border-red-100 p-3 text-sm text-red-600 flex items-center gap-2">
-                  <span>⚠️</span> {error}
-                </div>
-              )}
+            {/* Error Message */}
+            {error && (
+              <div className="rounded-lg bg-red-50 border border-red-100 p-3 text-sm text-red-600 flex items-center gap-2">
+                <span>⚠️</span> {error}
+              </div>
+            )}
 
             {/* Submit Button */}
             <button
@@ -163,7 +163,7 @@ export default function LoginPage() {
       </div>
 
       {/* RIGHT PANEL (Image) */}
-     
+
       <div className="hidden lg:flex items-center justify-center overflow-hidden">
         <Image
           src={DnaVaultImage}
@@ -174,7 +174,7 @@ export default function LoginPage() {
           className="object-cover rounded-2xl"
           priority
         />
-      </div> 
+      </div>
     </div>
   );
 }
