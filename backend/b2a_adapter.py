@@ -3,7 +3,6 @@ from pathlib import Path
 import shutil
 import subprocess
 import ast
-from wsl_paths import to_wsl_path
 
 def run_b2a_pipeline(
     git_bash_path: Path,
@@ -33,26 +32,33 @@ def run_b2a_pipeline(
     reference_fasta = reference_fasta.resolve()
     b2a_repo_dir = b2a_repo_dir.resolve()
 
-    b2a_repo_wsl = to_wsl_path(b2a_repo_dir)
-    bam_wsl = to_wsl_path(bam_path)
-    ref_wsl = to_wsl_path(reference_fasta)
+    # 1. Sanitize the script line endings natively in Python (bulletproof)
+    try:
+        script_text = script.read_text(encoding="utf-8")
+        if "\r" in script_text:
+            script.write_text(script_text.replace("\r", ""), encoding="utf-8")
+    except Exception as e:
+        print(f"Warning: Could not sanitize run_pipeline.sh line endings: {e}")
 
+    # 2. Force executable permissions
+    script.chmod(0o755)
+
+    # 3. Call Conda directly using a clean argument list
     cmd = [
-        "wsl",
-        "--distribution",
-        "Ubuntu-24.04",
-        "bash",
-        "-lc",
-        f'''
-        cd "{b2a_repo_wsl}" &&
-            PATH="/home/naveen/tools/modkit-0.5.0:$PATH" \
-            /home/naveen/miniforge3/bin/mamba run -n modkit_env \
-            bash ./run_pipeline.sh "{bam_wsl}" "{ref_wsl}" "{bitwidth}"
-        '''
+        "/opt/conda/bin/conda", 
+        "run", 
+        "-n", "modkit_env",
+        "bash", 
+        "./run_pipeline.sh",
+        str(bam_path),
+        str(reference_fasta),
+        str(bitwidth)
     ]
 
-    proc = subprocess.run(cmd, capture_output=True, text=True)
+    # Run the process explicitly inside the B2A directory
+    proc = subprocess.run(cmd, cwd=str(b2a_repo_dir), capture_output=True, text=True)
 
+    # Write logs
     stdout_log.write_text(proc.stdout or "", encoding="utf-8", errors="ignore")
     stderr_log.write_text(proc.stderr or "", encoding="utf-8", errors="ignore")
 
@@ -60,13 +66,11 @@ def run_b2a_pipeline(
         tail_stdout = (proc.stdout or '')[-1200:]
         tail_stderr = (proc.stderr or '')[-1200:]
         raise RuntimeError(
-            f"B2A pipeline failed in WSL (exit={proc.returncode}). "
-            f"Check logs: {stdout_log} and {stderr_log}"
+            f"B2A pipeline failed in Docker (exit={proc.returncode}).\n"
+            f"Check logs: {stdout_log} and {stderr_log}\n"
             f"cmd: {cmd}\n"
             f"stdout_tail:\n{tail_stdout}\n"
             f"stderr_tail:\n{tail_stderr}\n"
-            f"stdout(log): {stdout_log}\n"
-            f"stderr(log): {stderr_log}\n"
         )
 
     ascii_logs_dir = b2a_repo_dir / "ASCII_logs"
@@ -90,9 +94,9 @@ def run_b2a_pipeline(
         if line.startswith("ASCII characters:"):
             ascii_line = line
             break
+            
     if not ascii_line:
         raise RuntimeError("B2A log does not contain 'ASCII characters' line.")
-    
     
     # Parse the list into a clean string
     # Example: ASCII characters: ['E', 'p', 'i', 'B']

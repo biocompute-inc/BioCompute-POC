@@ -1,0 +1,61 @@
+FROM continuumio/miniconda3:latest
+
+WORKDIR /app
+
+# 1. Install backend dependencies
+COPY backend/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# 2. Setup Conda for the B2A pipeline (Modkit)
+RUN conda create -n modkit_env -c conda-forge -c bioconda python=3.11 ont-modkit==0.5.0 -y && \
+    conda clean -afy
+
+# 3. Add Conda env to global PATH
+ENV PATH="/opt/conda/envs/modkit_env/bin:$PATH"
+
+# 4. Copy backend code and tools submodules
+COPY backend/ ./backend/
+COPY tools/ ./tools/
+
+# 5. Fix Windows line endings and ensure pipeline script is executable
+RUN sed -i 's/\r$//' ./tools/B2A/run_pipeline.sh && \
+    chmod +x ./tools/B2A/run_pipeline.sh
+
+# 6. Make sure Python can find the backend module imports
+ENV PYTHONPATH="/app/backend:$PYTHONPATH"
+
+EXPOSE 8000
+
+# Start the FastAPI server
+CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# backend/Dockerfile
+FROM continuumio/miniconda3:latest
+
+WORKDIR /app
+
+# 1. Install backend dependencies
+COPY backend/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# 2. Setup Conda for the B2A pipeline (Modkit & SAMTools)
+RUN conda create -n modkit_env -c conda-forge -c bioconda python=3.11 ont-modkit==0.5.0 samtools -y && \
+    conda clean -afy
+
+# 3. Add Conda env to global PATH
+ENV PATH="/opt/conda/envs/modkit_env/bin:$PATH"
+
+# 4. Copy backend code and tools submodules
+COPY backend/ ./backend/
+COPY tools/ ./tools/
+
+# 5. Fix Windows line endings and ensure pipeline script is executable
+RUN sed -i 's/\r$//' ./tools/B2A/run_pipeline.sh && \
+    chmod +x ./tools/B2A/run_pipeline.sh
+
+# 6. Make sure Python can find the backend module imports
+ENV PYTHONPATH="/app/backend:$PYTHONPATH"
+
+EXPOSE 8000
+
+# Start the FastAPI server
+CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]

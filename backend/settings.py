@@ -8,29 +8,43 @@ load_dotenv()
 
 @dataclass(frozen=True)
 class Settings:
+    # 1. Fields WITHOUT defaults go first
     ot2_repo_dir: Path
     b2a_repo_dir: Path
     artifacts_dir: Path
     session_secret: str
     git_bash_path: Path
     db_url: str
-    b2a_reference_fasta = Path(os.getenv("B2A_REFERENCE_FASTA", ""))
-    b2a_bitwidth = int(os.getenv("B2A_BITWIDTH", "8"))
     frontend_base_url: str
     reset_token_ttl_minutes: int
 
+    # 2. Fields WITH defaults go last
+    b2a_reference_fasta: Path = Path(os.getenv("B2A_REFERENCE_FASTA", "/app/tools/references/reference.fasta"))
+    b2a_bitwidth: int = int(os.getenv("B2A_BITWIDTH", "8"))
+
 def get_settings() -> Settings:
-    ot2_repo = Path(os.getenv("OT2_REPO_DIR", "../tools/OT2-BRICK-MIX-PROTOCOLS")).resolve()
-    b2a_repo = Path(os.getenv("B2A_REPO_DIR", "../tools/B2A")).resolve()
-    artifacts = Path(os.getenv("ARTIFACTS_DIR", "../artifacts")).resolve()
+    # Use absolute paths starting with /app (your Docker WORKDIR)
+    ot2_repo = Path(os.getenv("OT2_REPO_DIR", "/tools/OT2-BRICK-MIX-PROTOCOLS")).resolve()
+    b2a_repo = Path(os.getenv("B2A_REPO_DIR", "/tools/B2A")).resolve()
+    artifacts = Path(os.getenv("ARTIFACTS_DIR", "/artifacts")).resolve()
+    
     secret = os.getenv("SESSION_SECRET", "dev-secret-change-me")
-    bash = Path(os.getenv("GIT_BASH_PATH", "C:/Program Files/Git/bin/bash.exe"))
+    
+    # Change to standard Linux bash path!
+    bash = Path(os.getenv("GIT_BASH_PATH", "/bin/bash"))
 
     db_url = os.getenv("DATABASE_URL", "")
     if not db_url:
         raise RuntimeError("DATABASE_URL is not set")
+        
+        
 
-
+    # if not ot2_repo.is_absolute():
+    #     ot2_repo = Path("/app") / ot2_repo
+    # if not b2a_repo.is_absolute():
+    #     b2a_repo = Path("/app") / b2a_repo
+    # if not artifacts.is_absolute():
+    #     artifacts = Path("/app") / artifacts
 
     return Settings(
         ot2_repo_dir=ot2_repo,

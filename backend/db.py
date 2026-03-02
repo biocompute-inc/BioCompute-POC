@@ -6,6 +6,7 @@ from settings import get_settings
 
 settings = get_settings()
 
+
 connect_args = {}
 if settings.db_url.startswith("sqlite"):
     # required for SQLite + FastAPI

@@ -222,6 +222,8 @@ def get_job(job_id: str, request: Request, db: OrmSession = Depends(get_db)):
     if u.role == "user" and j.created_by != u.id:
         raise HTTPException(status_code=403, detail="Forbidden")
 
+    assigned_user = db.query(User).filter(User.id == j.assigned_to).first() if j.assigned_to else None
+
     events = (
         db.query(JobEvent)
         .filter(JobEvent.job_id == job_id)
@@ -243,6 +245,7 @@ def get_job(job_id: str, request: Request, db: OrmSession = Depends(get_db)):
         "status": j.status,
         "created_by": j.created_by,
         "assigned_to": j.assigned_to,
+        "assigned_to_email": assigned_user.email if assigned_user else None,
         "file_id": j.file_id,
         "original_filename": j.file.original_filename if j.file else None,
         "plaintext_path": j.plaintext_path,
