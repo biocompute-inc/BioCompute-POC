@@ -9,6 +9,8 @@ import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import avatarAdmin from "@/app/assets/avatarAdmin.png";
+import scientistAvatar from "@/app/assets/scientistAvatar.png";
+import userAvatar from "@/app/assets/avator1.png";
 import { useAuth } from "@/components/AuthProvider";
 import {
   Users,
@@ -237,6 +239,26 @@ function AdminDashboardInner() {
       return { key, dir: "asc" };
     });
   };
+
+  const getAvatarByRole = (role: string) => {
+  switch (role?.toLowerCase()) {
+    case "admin":
+      return avatarAdmin;
+    case "scientist":
+      return scientistAvatar;
+    default:
+      return userAvatar;
+  }
+};
+
+const getRingColor = (role: string, status: string) => {
+  if (role?.toLowerCase() === "admin") return "ring-gray-300";
+
+  if (status === "FREE") return "ring-green-500";
+  if (status === "BUSY") return "ring-red-500";
+
+  return "ring-gray-300";
+};
 
   return (
     <main className="min-h-screen bg-purple-50">
@@ -532,7 +554,34 @@ function AdminDashboardInner() {
                 <tbody>
                   {filteredSortedStaff.map((s) => (
                     <tr key={s.user_id} className="border-b border-gray-100 last:border-b-0">
-                      <td className="px-6 py-5 text-sm text-gray-800">{s.display_name || "-"}</td>
+                     <td className="px-6 py-5 text-sm text-gray-800">
+                        <div className="flex items-center gap-3">
+                          <div className="relative">
+                            <Image
+                              src={getAvatarByRole(s.role)}
+                              alt={s.role}
+                              width={10}
+                              height={10}
+                              className={`h-5 w-5 rounded-full object-cover ring-1 ${getRingColor(
+                                s.role,
+                                s.status
+                              )}`}
+                            />
+                            {s.role?.toLowerCase() !== "admin" && (
+                              <span
+                                className={`absolute -bottom-1 -right-1 h-2 w-2 rounded-full border-2 border-white ${
+                                  s.status === "FREE"
+                                    ? "bg-green-500"
+                                    : s.status === "BUSY"
+                                    ? "bg-red-500"
+                                    : "bg-gray-400"
+                                }`}
+                              />
+                            )}
+                          </div>
+                          <span>{s.display_name || "-"}</span>
+                        </div>
+                      </td>
                       <td className="px-6 py-5 text-sm text-gray-700">
                         <div className="max-w-420px truncate">{s.email}</div>
                       </td>
@@ -590,21 +639,24 @@ function SummaryCard({
 function StatusPill({ status }: { status: "BUSY" | "FREE" | "N/A" }) {
   if (status === "BUSY") {
     return (
-      <span className="inline-flex items-center rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-700 ring-1 ring-red-200">
-        BUSY
+      <span className="inline-flex gap-1 items-center rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-700 ring-1 ring-red-200 ">
+        <span className='size-1.5 rounded-full bg-red-500' aria-hidden='true' />
+        Cooking
       </span>
     );
   }
   if (status === "FREE") {
     return (
-      <span className="inline-flex items-center rounded-full bg-green-50 px-3 py-1 text-xs font-semibold text-green-700 ring-1 ring-green-200">
-        FREE
+      <span className="inline-flex gap-1 items-center rounded-full bg-green-50 px-3 py-1 text-xs font-semibold text-green-700 ring-1 ring-green-200">
+        <span className='size-1.5 rounded-full bg-green-500' aria-hidden='true' />
+        Available
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center rounded-full bg-gray-50 px-3 py-1 text-xs font-semibold text-gray-700 ring-1 ring-gray-200">
-      N/A
+    <span className="inline-flex gap-1 items-center rounded-full bg-gray-50 px-3 py-1 text-xs font-semibold text-gray-700 ring-1 ring-gray-200">
+      <span className='size-1.5 rounded-full bg-gray-500' aria-hidden='true' />
+      Admin
     </span>
   );
 }
