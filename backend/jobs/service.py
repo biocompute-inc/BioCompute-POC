@@ -3,10 +3,12 @@ from __future__ import annotations
 import json
 import shutil
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import Depends, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
 from sqlalchemy.orm import Session as OrmSession
 
 from auth.service import _utcnow
@@ -20,13 +22,33 @@ from models import Job
 from models import JobEvent
 from models import Notification
 from models import User
-from ot2_adapter import generate_ot2_protocol
+from ot2_adapter import (
+    PROTOCOL_CHOICES,
+    VALID_PROTOCOL_KEYS,
+    generate_ot2_protocol,
+    generate_ot2_protocol_by_key,
+)
 from settings import get_settings
 from ot2_client import OT2Config, push_protocol_placeholder
 
 settings = get_settings()
 
 ALLOWED_DELETE_STATUSES = {"stored", "retrieved", "failed", "completed"}
+
+
+class GenerateProtocolRequest(BaseModel):
+    """Request body for POST /jobs/{job_id}/generate-protocol."""
+    protocol_key: str = "brick_mix_sa_ot2"
+
+
+class PushToOT2Request(BaseModel):
+    """Request body for POST /jobs/{job_id}/push-to-ot2."""
+    protocol_filename: str  # filename of an already-generated protocol in the job's protocol dir
+
+
+def list_protocols() -> list[dict]:
+    """Return the list of available OT-2 protocol script choices."""
+    return PROTOCOL_CHOICES
 
 # Author - Naveen M, for BioCompute, PoC - Version 0.0.1 <Future Authors can add whatever they have done and add the name as co-author>
 # This file contains the main service functions for handling job-related operations, such as creating jobs from uploaded files, listing jobs, retrieving job details, uploading BAM files, marking jobs as complete, and deleting jobs.
@@ -305,6 +327,111 @@ def download_protocol(job_id: str, request: Request, db: OrmSession = Depends(ge
     return FileResponse(path=job.protocol_path, filename=Path(job.protocol_path).name)
 
 
+def list_job_protocols(job_id: str, request: Request, db: OrmSession = Depends(get_db)):
+    """GET /jobs/{job_id}/protocols – list all .py files in the job's protocol directory."""
+    u = get_current_user(db, request)
+    j = db.query(Job).filter(Job.id == job_id).first()
+    if not j:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if u.role == "user" and j.created_by != u.id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    proto_dir = settings.artifacts_dir / job_id / "protocol"
+    if not proto_dir.exists():
+        return []
+
+    files = []
+    for p in sorted(proto_dir.glob("*.py"), key=lambda f: f.stat().st_mtime, reverse=True):
+        stat = p.stat()
+        files.append({
+            "filename": p.name,
+            "size_bytes": stat.st_size,
+            "generated_at": datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat(),
+        })
+    return files
+
+
+def download_protocol_by_name(
+    job_id: str, filename: str, request: Request, db: OrmSession = Depends(get_db)
+):
+    """GET /jobs/{job_id}/protocol/{filename} – download a specific generated protocol file."""
+    u = get_current_user(db, request)
+    j = db.query(Job).filter(Job.id == job_id).first()
+    if not j:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if j.created_by != u.id and u.role not in {"scientist", "admin"}:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    # Sanitise – strip any path traversal
+    safe_name = Path(filename).name
+    proto_path = settings.artifacts_dir / job_id / "protocol" / safe_name
+    if not proto_path.exists() or not proto_path.is_file():
+        raise HTTPException(status_code=404, detail=f"Protocol file not found: {safe_name}")
+
+    return FileResponse(path=str(proto_path), filename=safe_name)
+
+
+def generate_protocol_for_job(
+    job_id: str,
+    request: Request,
+    body: GenerateProtocolRequest,
+    db: OrmSession = Depends(get_db),
+):
+    """POST /jobs/{job_id}/generate-protocol – generate a protocol without pushing to OT-2."""
+    u = get_current_user(db, request)
+    require_role(u, {"scientist", "admin"})
+
+    protocol_key = body.protocol_key
+    if protocol_key not in VALID_PROTOCOL_KEYS:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid protocol_key {protocol_key!r}. Choose from: {sorted(VALID_PROTOCOL_KEYS)}",
+        )
+
+    j = db.query(Job).filter(Job.id == job_id).first()
+    if not j:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if not j.plaintext_path:
+        raise HTTPException(status_code=400, detail="Input file path not recorded for this job")
+    input_path = Path(j.plaintext_path)
+    if not input_path.exists():
+        raise HTTPException(status_code=400, detail=f"Input file missing: {input_path}")
+
+    proto_dir = settings.artifacts_dir / job_id / "protocol"
+    try:
+        new_protocol_path = generate_ot2_protocol_by_key(
+            protocol_key=protocol_key,
+            ot2_repo_dir=settings.ot2_repo_dir,
+            input_file_path=input_path,
+            out_dir=proto_dir,
+            temp_vol_ul=1.0,
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Protocol generation failed for key {protocol_key!r}: {e}",
+        )
+
+    j.protocol_path = str(new_protocol_path)
+    j.status = "PROTOCOL_READY"
+    j.updated_at = _utcnow()
+    db.add(JobEvent(
+        job_id=job_id,
+        created_by=u.id,
+        event_type="PROTOCOL_READY",
+        message=f"Protocol generated ({protocol_key}): {new_protocol_path.name}",
+        created_at=_utcnow(),
+    ))
+    db.commit()
+
+    return {
+        "protocol_filename": new_protocol_path.name,
+        "protocol_key": protocol_key,
+        "download_url": f"/jobs/{job_id}/protocol/{new_protocol_path.name}",
+        "status": "PROTOCOL_READY",
+    }
+
+
 def upload_bam(
     job_id: str, request: Request, bam: UploadFile = File(...), db: OrmSession = Depends(get_db)
 ):
@@ -581,19 +708,28 @@ def scientist_jobs(request: Request, db: OrmSession = Depends(get_db)):
         )
     return out
 
-def push_to_ot2(job_id: str, request: Request, db: OrmSession = Depends(get_db)):
+def push_to_ot2(
+    job_id: str,
+    request: Request,
+    body: PushToOT2Request,
+    db: OrmSession = Depends(get_db),
+):
     u = get_current_user(db, request)
     require_role(u, {"scientist", "admin"})
 
     j = db.query(Job).filter(Job.id == job_id).first()
     if not j:
         raise HTTPException(status_code=404, detail="Job not found")
-    if not j.protocol_path:
-        raise HTTPException(status_code=400, detail="Protocol not generated yet")
 
-    protocol_path = Path(j.protocol_path)
-    if not protocol_path.exists():
-        raise HTTPException(status_code=400, detail=f"Protocol missing: {protocol_path}")
+    # Resolve + validate the requested protocol file
+    safe_name = Path(body.protocol_filename).name
+    proto_dir = settings.artifacts_dir / job_id / "protocol"
+    protocol_path = proto_dir / safe_name
+    if not protocol_path.exists() or not protocol_path.is_file():
+        raise HTTPException(
+            status_code=400,
+            detail=f"Protocol file not found: {safe_name}. Generate it first.",
+        )
 
     # record push requested
     j.status = "PUSH_REQUESTED"
@@ -602,7 +738,7 @@ def push_to_ot2(job_id: str, request: Request, db: OrmSession = Depends(get_db))
         job_id=job_id,
         created_by=u.id,
         event_type="PUSH_REQUESTED",
-        message="Scientist clicked Push to Opentrons",
+        message=f"Scientist requested push with protocol file: {safe_name}",
         created_at=_utcnow(),
     ))
     db.commit()

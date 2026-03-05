@@ -22,6 +22,67 @@ import {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE // keep consistent everywhere (cookies + CORS)
 
+// ---------------------------------------------------------------------------
+// Protocol registry – must stay in sync with backend PROTOCOL_CHOICES
+// ---------------------------------------------------------------------------
+const PROTOCOLS = [
+  {
+    key: "brick_mix_sa_ot2",
+    label: "Brick Mix + SA OT-2",
+    description: "Full Brick Mix + Self-Assembly OT-2 protocol (cross-platform default)",
+  },
+  {
+    key: "asym_pcr",
+    label: "ASYM PCR",
+    description: "Asymmetric PCR static protocol — no file encoding",
+  },
+  {
+    key: "bm_sa_builder",
+    label: "BM SA Builder (Linux)",
+    description: "Brick Mix + Self-Assembly builder — Linux compatible",
+  },
+  {
+    key: "build_brick_mix",
+    label: "Build Brick Mix",
+    description: "Generates a brick-mix protocol from the input file stem",
+  },
+  {
+    key: "sa_builder_07",
+    label: "SA Builder 07",
+    description: "Self-Assembly-only builder v0.7",
+  },
+] as const;
+
+type ProtocolKey = (typeof PROTOCOLS)[number]["key"];
+
+function timeAgo(isoUtc: string): string {
+  const generated = new Date(isoUtc);
+  const now = new Date();
+  const diffMs = now.getTime() - generated.getTime();
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHr = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHr / 24);
+
+  let relative: string;
+  if (diffSec < 60) relative = `${diffSec}s ago`;
+  else if (diffMin < 60) relative = `${diffMin}m ago`;
+  else if (diffHr < 24) relative = `${diffHr}h ago`;
+  else relative = `${diffDay}d ago`;
+
+  const utcLabel = generated.toLocaleString("en-GB", {
+    timeZone: "UTC",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }) + " UTC";
+
+  return `${relative} · ${utcLabel}`;
+}
+
 async function handleDownload(urlPath: string, fallbackName?: string) {
   const res = await fetch(`${API_BASE}${urlPath}`, {
     method: "GET",
@@ -116,6 +177,13 @@ function LabJobInner() {
   const [uploading, setUploading] = useState(false);
   const [completing, setCompleting] = useState(false);
   const [pushing, setPushing] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [showGenerateModal, setShowGenerateModal] = useState(false);
+  const [showDownloadModal, setShowDownloadModal] = useState(false);
+  const [showPushModal, setShowPushModal] = useState(false);
+  const [selectedProtocol, setSelectedProtocol] = useState<ProtocolKey>("brick_mix_sa_ot2");
+  const [generatedProtocols, setGeneratedProtocols] = useState<Array<{ filename: string; size_bytes: number; generated_at: string }>>([]);
+  const [selectedGeneratedProtocol, setSelectedGeneratedProtocol] = useState<string>("");
 
   const greetingName = useMemo(() => {
     return user?.display_name || user?.email || "User";
@@ -128,8 +196,15 @@ function LabJobInner() {
     (async () => {
       setErr(null);
       try {
-        const data = await apiFetch(`/jobs/${id}`);
-        if (!cancelled) setJob(data);
+        const [jobData, protocolData] = await Promise.all([
+          apiFetch(`/jobs/${id}`),
+          apiFetch(`/jobs/${id}/protocols`).catch(() => []),
+        ]);
+        if (!cancelled) {
+          setJob(jobData);
+          setGeneratedProtocols(protocolData);
+          if (protocolData.length > 0) setSelectedGeneratedProtocol(protocolData[0].filename);
+        }
       } catch (e: any) {
         if (!cancelled) setErr(e.message);
       } finally {
@@ -145,6 +220,16 @@ function LabJobInner() {
   async function refreshJob() {
     const data = await apiFetch(`/jobs/${id}`);
     setJob(data);
+  }
+
+  async function fetchGeneratedProtocols() {
+    try {
+      const data = await apiFetch(`/jobs/${id}/protocols`);
+      setGeneratedProtocols(data);
+      if (data.length > 0) setSelectedGeneratedProtocol((prev) => prev || data[0].filename);
+    } catch {
+      // non-critical
+    }
   }
 
   async function uploadBam() {
@@ -197,38 +282,67 @@ function LabJobInner() {
       setCompleting(false);
     }
   }
-  async function pushToOT2() {
-    if (pushing) return;
+  async function generateProtocol(protocolKey: ProtocolKey) {
+    if (generating) return;
+    setErr(null);
+    setMsg(null);
+    setPushMsg(null);
+    setGenerating(true);
+    setShowGenerateModal(false);
 
+    try {
+      const res = await fetch(`http://localhost:8000/jobs/${id}/generate-protocol`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ protocol_key: protocolKey }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      setMsg(`Protocol generated: ${data.protocol_filename}`);
+      await refreshJob();
+      await fetchGeneratedProtocols();
+    } catch (e: any) {
+      setErr(e.message);
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  async function pushToOT2(filename: string) {
+    if (pushing) return;
     setErr(null);
     setMsg(null);
     setPushMsg(null);
     setPushing(true);
+    setShowPushModal(false);
 
     try {
       const res = await fetch(`http://localhost:8000/jobs/${id}/push-to-ot2`, {
         method: "POST",
         credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ protocol_filename: filename }),
       });
-
-      if (!res.ok) {
-        throw new Error(await res.text());
-      }
-
+      if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
-
-      // show message
-      setPushMsg(
-        data?.message ||
-        "Pushed to OT-2 (placeholder). When you add IP/key/command, this will run SSH."
-      );
-
-      // refresh job (status/events might have changed)
+      setPushMsg(data?.message || `Protocol "${filename}" pushed to OT-2 (placeholder).`);
       await refreshJob();
     } catch (e: any) {
       setErr(e.message);
     } finally {
       setPushing(false);
+    }
+  }
+
+  async function downloadProtocolByName(filename: string) {
+    setShowDownloadModal(false);
+    try {
+      setErr(null);
+      await handleDownload(`/jobs/${id}/protocol/${filename}`, filename);
+      setMsg(`Protocol "${filename}" downloaded.`);
+    } catch (e: any) {
+      setErr(e.message);
     }
   }
 
@@ -367,36 +481,47 @@ function LabJobInner() {
               </div>
 
               <div className="mt-5 space-y-3">
-                {job?.protocol_download_url ? (
+                {/* Generate Protocol – always shown when job has an input file */}
+                {job?.plaintext_path_download_url && (
+                  <button
+                    type="button"
+                    onClick={() => setShowGenerateModal(true)}
+                    disabled={generating}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
+                    title="Choose a protocol script and generate the OT-2 protocol file"
+                  >
+                    {generating ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Generating…
+                      </>
+                    ) : (
+                      <>
+                        <FileCode className="h-4 w-4" />
+                        Generate Protocol
+                      </>
+                    )}
+                  </button>
+                )}
+
+                {/* Download Protocol + Push to OT-2 – only shown once protocols exist */}
+                {generatedProtocols.length > 0 && (
                   <>
                     <button
                       type="button"
-                      onClick={async () => {
-                        try {
-                          setErr(null);
-                          setMsg(null);
-                          await handleDownload(
-                            job.protocol_download_url,
-                            `protocol_${job?.id ?? "job"}.py`
-                          );
-                          setMsg("Protocol downloaded.");
-                        } catch (e: any) {
-                          setErr(e.message);
-                        }
-                      }}
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-800"
+                      onClick={() => setShowDownloadModal(true)}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 ring-1 ring-gray-200 hover:bg-gray-50"
                     >
                       <FileCode className="h-4 w-4" />
-                      Download protocol
+                      Download Protocol
                     </button>
 
-                    {/* Push to OT-2 */}
                     <button
                       type="button"
-                      onClick={pushToOT2}
+                      onClick={() => setShowPushModal(true)}
                       disabled={pushing}
                       className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-black px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
-                      title="Placeholder now; will use SSH when OT-2 IP and key are configured"
+                      title="Push a generated protocol to the OT-2 robot"
                     >
                       {pushing ? (
                         <>
@@ -411,7 +536,9 @@ function LabJobInner() {
                       )}
                     </button>
                   </>
-                ) : (
+                )}
+
+                {!job?.plaintext_path_download_url && generatedProtocols.length === 0 && (
                   <div className="rounded-xl border border-dashed border-gray-200 bg-white p-4 text-sm text-gray-500">
                     No protocol attached.
                   </div>
@@ -580,6 +707,131 @@ function LabJobInner() {
           </section>
         </div>
       </div>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* 1. Generate Protocol modal – pick script type                       */}
+      {/* ------------------------------------------------------------------ */}
+      {showGenerateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+              <div className="flex items-center gap-2">
+                <FileCode className="h-5 w-5 text-gray-700" />
+                <h2 className="text-base font-bold text-gray-900">Generate Protocol</h2>
+              </div>
+              <button onClick={() => setShowGenerateModal(false)} className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700">✕</button>
+            </div>
+            <div className="space-y-2 px-6 py-4">
+              {PROTOCOLS.map((p) => (
+                <label
+                  key={p.key}
+                  className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition ${selectedProtocol === p.key
+                    ? "border-gray-900 bg-gray-50 ring-1 ring-gray-900"
+                    : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                    }`}
+                >
+                  <input type="radio" name="gen-protocol" value={p.key} checked={selectedProtocol === p.key} onChange={() => setSelectedProtocol(p.key)} className="mt-0.5 accent-gray-900" />
+                  <div>
+                    <div className="text-sm font-semibold text-gray-900">{p.label}</div>
+                    <div className="mt-0.5 text-xs text-gray-500">{p.description}</div>
+                  </div>
+                </label>
+              ))}
+            </div>
+            <div className="flex justify-end gap-3 border-t border-gray-100 px-6 py-4">
+              <button onClick={() => setShowGenerateModal(false)} className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">Cancel</button>
+              <button onClick={() => generateProtocol(selectedProtocol)} className="inline-flex items-center gap-2 rounded-xl bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800">
+                <FileCode className="h-4 w-4" />
+                Generate
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------------ */}
+      {/* 2. Download Protocol modal – pick from generated protocols          */}
+      {/* ------------------------------------------------------------------ */}
+      {showDownloadModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+              <div className="flex items-center gap-2">
+                <FileCode className="h-5 w-5 text-gray-700" />
+                <h2 className="text-base font-bold text-gray-900">Download Protocol</h2>
+              </div>
+              <button onClick={() => setShowDownloadModal(false)} className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700">✕</button>
+            </div>
+            <p className="px-6 pt-4 text-xs text-gray-500">Select a generated protocol file to download.</p>
+            <div className="space-y-2 px-6 py-4">
+              {generatedProtocols.map((p) => (
+                <label
+                  key={p.filename}
+                  className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition ${selectedGeneratedProtocol === p.filename
+                    ? "border-gray-900 bg-gray-50 ring-1 ring-gray-900"
+                    : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                    }`}
+                >
+                  <input type="radio" name="dl-protocol" value={p.filename} checked={selectedGeneratedProtocol === p.filename} onChange={() => setSelectedGeneratedProtocol(p.filename)} className="mt-0.5 accent-gray-900" />
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-semibold text-gray-900">{p.filename}</div>
+                    <div className="mt-0.5 text-xs text-gray-500">{(p.size_bytes / 1024).toFixed(1)} KB · {timeAgo(p.generated_at)}</div>
+                  </div>
+                </label>
+              ))}
+            </div>
+            <div className="flex justify-end gap-3 border-t border-gray-100 px-6 py-4">
+              <button onClick={() => setShowDownloadModal(false)} className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">Cancel</button>
+              <button onClick={() => downloadProtocolByName(selectedGeneratedProtocol)} disabled={!selectedGeneratedProtocol} className="inline-flex items-center gap-2 rounded-xl bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-60">
+                <FileCode className="h-4 w-4" />
+                Download
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------------ */}
+      {/* 3. Push to OT-2 modal – pick from generated protocols               */}
+      {/* ------------------------------------------------------------------ */}
+      {showPushModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+              <div className="flex items-center gap-2">
+                <Wrench className="h-5 w-5 text-gray-700" />
+                <h2 className="text-base font-bold text-gray-900">Push to OT-2</h2>
+              </div>
+              <button onClick={() => setShowPushModal(false)} className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700">✕</button>
+            </div>
+            <p className="px-6 pt-4 text-xs text-gray-500">Select which generated protocol to push to the OT-2 robot.</p>
+            <div className="space-y-2 px-6 py-4">
+              {generatedProtocols.map((p) => (
+                <label
+                  key={p.filename}
+                  className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition ${selectedGeneratedProtocol === p.filename
+                    ? "border-gray-900 bg-gray-50 ring-1 ring-gray-900"
+                    : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                    }`}
+                >
+                  <input type="radio" name="push-protocol" value={p.filename} checked={selectedGeneratedProtocol === p.filename} onChange={() => setSelectedGeneratedProtocol(p.filename)} className="mt-0.5 accent-gray-900" />
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-semibold text-gray-900">{p.filename}</div>
+                    <div className="mt-0.5 text-xs text-gray-500">{(p.size_bytes / 1024).toFixed(1)} KB · {timeAgo(p.generated_at)}</div>
+                  </div>
+                </label>
+              ))}
+            </div>
+            <div className="flex justify-end gap-3 border-t border-gray-100 px-6 py-4">
+              <button onClick={() => setShowPushModal(false)} className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">Cancel</button>
+              <button onClick={() => pushToOT2(selectedGeneratedProtocol)} disabled={!selectedGeneratedProtocol} className="inline-flex items-center gap-2 rounded-xl bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-60">
+                <Wrench className="h-4 w-4" />
+                Push to OT-2
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
