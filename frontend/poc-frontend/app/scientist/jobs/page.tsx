@@ -269,7 +269,7 @@ function ScientistJobsInner() {
                       <td className="px-6 py-5 text-sm">
                         {j.protocol_download_url ? (
                           <a
-                            href={`http://localhost:8000${j.protocol_download_url}`}
+                            href={`${process.env.NEXT_PUBLIC_API_BASE}${j.protocol_download_url}`}
                             target="_blank"
                             rel="noreferrer"
                             className="inline-flex items-center gap-2 font-medium text-purple-600 hover:text-purple-700"

@@ -243,7 +243,7 @@ function LabJobInner() {
     form.append("bam", bam);
 
     try {
-      const res = await fetch(`http://localhost:8000/jobs/${id}/bam`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE}/jobs/${id}/bam`, {
         method: "POST",
         credentials: "include",
         body: form,
@@ -291,7 +291,7 @@ function LabJobInner() {
     setShowGenerateModal(false);
 
     try {
-      const res = await fetch(`http://localhost:8000/jobs/${id}/generate-protocol`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE}/jobs/${id}/generate-protocol`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -318,7 +318,7 @@ function LabJobInner() {
     setShowPushModal(false);
 
     try {
-      const res = await fetch(`http://localhost:8000/jobs/${id}/push-to-ot2`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE}/jobs/${id}/push-to-ot2`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },

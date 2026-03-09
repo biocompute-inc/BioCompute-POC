@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Dna, Lock, ArrowRight, TriangleAlert } from "lucide-react";
 import DnaVaultImage from "@/app/assets/DnaVaultImage.png"
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "${process.env.NEXT_PUBLIC_API_BASE}";
 
 
 export default function ResetPasswordPage() {

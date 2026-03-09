@@ -29,7 +29,7 @@ function NewJobInner() {
     form.append("upload", file);
 
     try {
-      const res = await fetch("http://localhost:8000/jobs/from-file", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE}/jobs/from-file`, {
         method: "POST",
         credentials: "include",
         body: form,

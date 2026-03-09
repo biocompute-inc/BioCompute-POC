@@ -275,7 +275,7 @@ function DashboardInner() {
     setDeleting(true);
 
     try {
-      const res = await fetch("http://localhost:8000/auth/delete-account", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE}/auth/delete-account`, {
         method: "POST",
         credentials: "include",
       });

@@ -1,21 +1,30 @@
 version: '3.8'
-
 services:
+  nginx:
+    image: nginx:alpine
+    container_name: poc_nginx
+    ports:
+      - "80:80"          # Only nginx is exposed now
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - frontend
+      - backend
+
   backend:
     build:
-      context: .                  # Build from the root directory so it can access tools/
+      context: .
       dockerfile: backend/DockerFile
     container_name: poc_backend
-    ports:
-      - "8000:8000"
+    # No ports exposed externally — nginx talks to it internally
+    expose:
+      - "8000"
     env_file:
-      - ./backend/.env            # Inject your Supabase DB URL and backend vars here
+      - ./backend/.env
     volumes:
-      # These 3 lines create the "tunnel" between your WSL files and the container
       - ./backend:/app/backend
       - ./tools:/app/tools
       - ./artifacts:/app/artifacts
-    # The --reload flag tells Uvicorn to watch the mounted /app/backend folder for changes
     command: ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
   frontend:
@@ -23,12 +32,13 @@ services:
       context: ./frontend/poc-frontend
       dockerfile: DockerFile
     container_name: poc_frontend
-    ports:
-      - "3000:3000"
+    # No ports exposed externally — nginx talks to it internally
+    expose:
+      - "3000"
     env_file:
-      - ./frontend/poc-frontend/.env.local  # Inject your Next.js vars here
+      - ./frontend/poc-frontend/.env.local
     volumes:
       - ./frontend/poc-frontend:/app
-      - /app/node_modules         # Prevent local node_modules from conflicting
+      - /app/node_modules
     depends_on:
       - backend

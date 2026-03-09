@@ -8,7 +8,7 @@ import DnaVaultImage from "@/app/assets/DnaVaultImage.png"
 import Input from '@mui/joy/Input';
 import Button from '@mui/joy/Button';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "${process.env.NEXT_PUBLIC_API_BASE}";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
