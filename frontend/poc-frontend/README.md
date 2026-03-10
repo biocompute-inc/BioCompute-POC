@@ -51,7 +51,7 @@ See the [root README](../../README.md) for platform-specific Docker instructions
 | `npm run lint` | Run ESLint |
 
 ---
-
+ 
 ## Tech
 
 - [Next.js 16](https://nextjs.org/docs)
