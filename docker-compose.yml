@@ -58,6 +58,8 @@ services:
     image: cloudflare/cloudflared:latest
     container_name: cloudflared_tunnel
     restart: always
+    profiles:                        
+      - prod
     environment:
       - TUNNEL_TOKEN=${TUNNEL_TOKEN}
     command: tunnel --no-autoupdate run
