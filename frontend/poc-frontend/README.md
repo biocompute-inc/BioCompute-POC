@@ -59,4 +59,4 @@ See the [root README](../../README.md) for platform-specific Docker instructions
 - [Tailwind CSS v4](https://tailwindcss.com)
 - [MUI Joy](https://mui.com/joy-ui/getting-started/)
 - [Framer Motion](https://www.framer.com/motion/)
-- [Lucide React](https://lucide.dev)
+- [Lucide React](https://lucide.dev)  
