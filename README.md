@@ -285,5 +285,3 @@ docker exec -it poc_backend bash
 # Stop and remove containers + volumes
 docker compose down -v
 ```
-
-test 123

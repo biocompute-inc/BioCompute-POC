@@ -13,6 +13,7 @@ services:
       - backend
     networks:
       - app_network
+    restart: unless-stopped
 
   backend:
     build:
@@ -30,6 +31,7 @@ services:
     command: ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     networks:
       - app_network
+    restart: unless-stopped
 
   frontend:
     build:
@@ -47,6 +49,7 @@ services:
       - backend
     networks:
       - app_network
+    restart: unless-stopped
 
   # NEW: Cloudflare Tunnel Service
   tunnel:
