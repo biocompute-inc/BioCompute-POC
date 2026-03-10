@@ -8,6 +8,9 @@ jobs:
   deploy:
     runs-on: self-hosted  # <--- This tells GitHub to talk to your Pi
     steps:
+      - name: Fix Workspace Permissions
+        run: sudo chown -R $USER:$USER ${{ github.workspace }} || true
+
       - name: Checkout code
         uses: actions/checkout@v4
         with:
