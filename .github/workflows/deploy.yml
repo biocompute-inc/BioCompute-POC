@@ -10,6 +10,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'  # If you have submodules, this will fetch them too
 
       - name: Copy Env Files
         run: |
