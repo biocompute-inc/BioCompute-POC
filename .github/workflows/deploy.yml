@@ -11,8 +11,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Copy Env
-        run: cp /home/biocompute/biocompute-poc/BioCompute-POC/.env . # Adjust path if needed
+      - name: Copy Env Files
+        run: |
+          # Copy root env (for the tunnel token)
+          cp /home/biocompute/biocompute-poc/BioCompute-POC/.env .
+          
+          # Copy backend env
+          cp /home/biocompute/biocompute-poc/BioCompute-POC/backend/.env ./backend/.env
+          
+          # Copy frontend env
+          cp /home/biocompute/biocompute-poc/BioCompute-POC/frontend/poc-frontend/.env.local ./frontend/poc-frontend/.env.local
 
       - name: Build and Run
         run: docker compose up -d --build

@@ -64,7 +64,7 @@ export default function LoginPage() {
               </div>
               {/* Serif Font for Logo Match */}
               <span className="text-4xl font-semibold tracking-tight text-slate-900">
-                BioCompute
+                Mo by BioCompute
               </span>
             </div>
 
