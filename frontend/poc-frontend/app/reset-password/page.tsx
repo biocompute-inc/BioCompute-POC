@@ -2,15 +2,16 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+// Added Suspense to the React imports
+import { useEffect, useMemo, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Dna, Lock, ArrowRight, TriangleAlert } from "lucide-react";
 import DnaVaultImage from "@/app/assets/DnaVaultImage.png"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "${process.env.NEXT_PUBLIC_API_BASE}";
 
-
-export default function ResetPasswordPage() {
+// 1. Renamed your main component and removed "export default"
+function ResetPasswordContent() {
   const params = useSearchParams();
   const router = useRouter();
   const token = useMemo(() => params.get("token") ?? "", [params]);
@@ -54,7 +55,6 @@ export default function ResetPasswordPage() {
     if (pw.length < 6) return setError("Password must be at least 6 characters.");
     if (pw.length > 24) return setError("Password must be at most 24 characters.");
     if (pw !== pw2) return setError("Passwords do not match.");
-
 
     setStatus("saving");
     try {
@@ -168,11 +168,9 @@ export default function ResetPasswordPage() {
 
                   <button
                     type="submit"
-                    //disabled={status === "saving"}
                     className="mt-8 w-full rounded-xl bg-[#9B7BD2] px-5 py-4 text-xl font-extrabold text-white shadow-sm transition hover:brightness-[1.02] active:translate-y-1px disabled:opacity-70"
                   >
                     <span className="inline-flex items-center justify-center gap-2">
-                      {/* {status === "saving" ? "Saving…" : "Update password"} */}
                       <ArrowRight className="h-5 w-5" />
                     </span>
                   </button>
@@ -200,16 +198,16 @@ export default function ResetPasswordPage() {
           </div>
 
           {/* Right hero */}
-            <div className="hidden lg:flex items-center justify-center overflow-hidden">
-                <Image
-                src={DnaVaultImage}
-                alt="DNA Data Storage Vault"
-                width={360}
-                height={200}
-                className="object-cover rounded-2xl"
-                priority
-                />
-            </div> 
+          <div className="hidden lg:flex items-center justify-center overflow-hidden">
+            <Image
+              src={DnaVaultImage}
+              alt="DNA Data Storage Vault"
+              width={360}
+              height={200}
+              className="object-cover rounded-2xl"
+              priority
+            />
+          </div>
         </div>
 
         <p className="mt-8 text-center text-sm text-slate-500">
@@ -217,5 +215,17 @@ export default function ResetPasswordPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#F3E6F9] flex items-center justify-center">
+        <div className="text-violet-700 font-medium">Loading...</div>
+      </div>
+    }>
+      <ResetPasswordContent />
+    </Suspense>
   );
 }
