@@ -10,7 +10,7 @@ RUN npm install
 # Copy the rest of the frontend code
 COPY . .
 
-# Build for production
+# Build for production (lint + type checks suppressed via next.config.ts)
 RUN npm run build
 
 # Switch out of the 'root' user into the 'node' user
