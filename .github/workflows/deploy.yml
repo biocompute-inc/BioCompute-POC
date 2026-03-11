@@ -28,4 +28,6 @@ jobs:
           cp /home/biocompute/biocompute-poc/BioCompute-POC/frontend/poc-frontend/.env.local ./frontend/poc-frontend/.env.local
 
       - name: Build and Run
-        run: docker compose -f docker-compose.yml --profile prod up -d --build
+        run: |
+          docker compose -f docker-compose.yml --profile prod up -d --build
+          docker compose -f docker-compose.yml restart poc_nginx
