@@ -1,4 +1,8 @@
 services:
   nginx:
     ports:
-      - "80:80"  
+      - "80:80"
+  frontend:
+    volumes:
+      - ./frontend/poc-frontend:/app
+      - /app/node_modules  

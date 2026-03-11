@@ -42,9 +42,6 @@ services:
       - "3000"
     env_file:
       - ./frontend/poc-frontend/.env.local
-    volumes:
-      - ./frontend/poc-frontend:/app
-      - /app/node_modules
     depends_on:
       - backend
     networks:
