@@ -5,9 +5,6 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   description: "Mo, The Future of DNA Storage (powered by BioCompute Inc.)",
-  icons: {
-    icon: "/faviconfinal.png",
-  },
 };
 
 const inter = Inter({
