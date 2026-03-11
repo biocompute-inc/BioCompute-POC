@@ -8,10 +8,13 @@ from auth.service import _utcnow
 from auth_utils import get_current_user, hash_password
 from db import get_db
 from models import File as DbFile
-from models import Job
+from models import Job, JobEvent, Notification
+from models import Session as DbSession
 from models import User
+from settings import get_settings
 
 router = APIRouter()
+settings = get_settings()
 
 # Author - Naveen M, for BioCompute, PoC - Version 0.0.1
 # This file contains admin-specific routes for user management and analytics. It includes endpoints for creating users and viewing analytics about users and staff. Access to these endpoints is restricted to users with the admin role.
@@ -164,3 +167,53 @@ def admin_staff_analytics(request: Request, db: OrmSession = Depends(get_db)):
         },
         "staff": out,
     }
+
+
+@router.delete("/admin/users/{user_id}", status_code=204)
+def delete_staff_user(user_id: int, request: Request, db: OrmSession = Depends(get_db)):
+    """Hard-delete a scientist (or admin) account. Admin only. Cannot delete yourself."""
+    admin = get_current_user(db, request)
+    if admin.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    if admin.id == user_id:
+        raise HTTPException(status_code=400, detail="You cannot delete your own account here")
+
+    target = db.query(User).filter(User.id == user_id).first()
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if target.role not in {"scientist", "admin"}:
+        raise HTTPException(status_code=400, detail="Only staff accounts can be deleted via this endpoint")
+
+    # Unassign any jobs currently assigned to this scientist.
+    # Active jobs are reset to PROTOCOL_READY so they can be re-assigned.
+    active_statuses = {"BAM_UPLOADED", "DECODING", "PUSH_REQUESTED", "PUSHED_TO_OT2"}
+    assigned_jobs = db.query(Job).filter(Job.assigned_to == user_id).all()
+    for j in assigned_jobs:
+        j.assigned_to = None
+        j.claimed_at = None
+        if j.status in active_statuses:
+            j.status = "PROTOCOL_READY"
+            j.updated_at = _utcnow()
+
+    # Null out job-event authorship (keep events for audit trail, just lose attribution)
+    db.query(JobEvent).filter(JobEvent.created_by == user_id).update(
+        {JobEvent.created_by: None}, synchronize_session=False
+    )
+
+    # Delete notifications received by this user
+    db.query(Notification).filter(Notification.recipient_user_id == user_id).delete(
+        synchronize_session=False
+    )
+
+    # Delete active sessions
+    db.query(DbSession).filter(DbSession.user_id == user_id).delete(
+        synchronize_session=False
+    )
+
+    # Hard delete the user row
+    db.delete(target)
+    db.commit()
+
+    return

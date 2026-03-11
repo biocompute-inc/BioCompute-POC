@@ -13,7 +13,7 @@ export default function Home() {
       {/* ── Navbar ── */}
       <nav className="relative z-10 flex items-center justify-between px-8 md:px-16 pt-7">
         <span className="text-lg font-bold tracking-widest uppercase text-black select-none">
-          Insignis/Valerius<span>.</span>
+          Mo by BioCompute<span></span>
         </span>
         <div className="flex gap-3">
           <Link
@@ -45,7 +45,7 @@ export default function Home() {
             </h1>
 
             <p className="mt-6 text-base md:text-lg text-black/70 max-w-lg leading-relaxed">
-              Insignis/Valerius is a DNA Data Storage Platform powered by BioCompute.
+              Mo by BioCompute is a DNA Data Storage Platform powered by BioCompute.
             </p>
 
             {/* CTA buttons */}
@@ -83,7 +83,7 @@ export default function Home() {
       {/* ── Footer strip ── */}
       <div className="relative z-10 pb-5 text-center">
         <p className="text-[11px] text-black/40 tracking-widest uppercase">
-          © 2026 BioCompute Inc. &nbsp;·&nbsp; Insignis / Valerius Platform
+          © 2026 BioCompute Inc. &nbsp;·&nbsp; Mo by BioCompute Platform
         </p>
       </div>
     </div>

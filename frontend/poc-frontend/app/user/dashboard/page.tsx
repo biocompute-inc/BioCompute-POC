@@ -565,12 +565,12 @@ function DashboardInner() {
         <span className="font-semibold">Upload a File</span>
       </Link>
 
-      {/* Delete Confirm Modal (matches screenshot style) */}
+      {/* Delete Confirm Modal */}
       <ConfirmDangerModal
         open={showDeleteConfirm}
-        title="Deactivate account"
-        description="Are you sure you want to deactivate your account? All of your data will be permanently removed. This action cannot be undone."
-        confirmText="Deactivate"
+        title="Delete account"
+        description="Are you sure you want to delete your account? All of your data will be permanently removed. This action cannot be undone."
+        confirmText="Delete"
         cancelText="Cancel"
         loading={deleting}
         onCancel={() => {

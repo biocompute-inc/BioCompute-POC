@@ -280,15 +280,8 @@ def delete_account(request: Request, response: Response, db: OrmSession = Depend
     # Files uploaded by user
     db.query(DbFile).filter(DbFile.user_id == u.id).delete(synchronize_session=False)
 
-    # 4) Soft delete the user account
-    u.is_active = False
-    u.deleted_at = _utcnow()
-
-    # optional: anonymize email to allow re-register same email later
-    u.email = f"deleted_{u.id}_{int(_utcnow().timestamp())}@deleted.local"
-    u.display_name = None
-    u.password_hash = "deleted"
-
+    # 4) Hard delete the user account
+    db.delete(u)
     db.commit()
 
     # 5) Clear cookie/session

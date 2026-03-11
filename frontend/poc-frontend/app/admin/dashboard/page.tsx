@@ -11,6 +11,7 @@ import Image from "next/image";
 import avatarAdmin from "@/app/assets/avatarAdmin.png";
 import scientistAvatar from "@/app/assets/scientistAvatar.png";
 import userAvatar from "@/app/assets/avator1.png";
+import ConfirmDangerModal from "@/components/ConfirmDangerModal";
 import { useAuth } from "@/components/AuthProvider";
 import {
   Users,
@@ -22,6 +23,7 @@ import {
   Filter,
   UserPlus,
   LogOut,
+  Trash2,
   UserStar,
 } from "lucide-react";
 
@@ -114,6 +116,8 @@ function AdminDashboardInner() {
 
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   // UI state: search / filters / sorting
   const [userQuery, setUserQuery] = useState("");
@@ -151,6 +155,24 @@ function AdminDashboardInner() {
       setLoading(false);
     }
   };
+
+  async function deleteStaff(userId: number) {
+    if (deletingId !== null) return;
+    setDeletingId(userId);
+    setDeleteConfirmId(null);
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE}/admin/users/${userId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error(await res.text());
+      await load();
+    } catch (e: any) {
+      setErr(e.message);
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -241,24 +263,24 @@ function AdminDashboardInner() {
   };
 
   const getAvatarByRole = (role: string) => {
-  switch (role?.toLowerCase()) {
-    case "admin":
-      return avatarAdmin;
-    case "scientist":
-      return scientistAvatar;
-    default:
-      return userAvatar;
-  }
-};
+    switch (role?.toLowerCase()) {
+      case "admin":
+        return avatarAdmin;
+      case "scientist":
+        return scientistAvatar;
+      default:
+        return userAvatar;
+    }
+  };
 
-const getRingColor = (role: string, status: string) => {
-  if (role?.toLowerCase() === "admin") return "ring-gray-300";
+  const getRingColor = (role: string, status: string) => {
+    if (role?.toLowerCase() === "admin") return "ring-gray-300";
 
-  if (status === "FREE") return "ring-green-500";
-  if (status === "BUSY") return "ring-red-500";
+    if (status === "FREE") return "ring-green-500";
+    if (status === "BUSY") return "ring-red-500";
 
-  return "ring-gray-300";
-};
+    return "ring-gray-300";
+  };
 
   return (
     <main className="min-h-screen bg-purple-50">
@@ -548,13 +570,16 @@ const getRingColor = (role: string, status: string) => {
                       onClick={() => toggleStaffSort("active_jobs")}
                       right
                     />
+                    <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
 
                 <tbody>
                   {filteredSortedStaff.map((s) => (
                     <tr key={s.user_id} className="border-b border-gray-100 last:border-b-0">
-                     <td className="px-6 py-5 text-sm text-gray-800">
+                      <td className="px-6 py-5 text-sm text-gray-800">
                         <div className="flex items-center gap-3">
                           <div className="relative">
                             <Image
@@ -569,13 +594,12 @@ const getRingColor = (role: string, status: string) => {
                             />
                             {s.role?.toLowerCase() !== "admin" && (
                               <span
-                                className={`absolute -bottom-1 -right-1 h-2 w-2 rounded-full border-2 border-white ${
-                                  s.status === "FREE"
+                                className={`absolute -bottom-1 -right-1 h-2 w-2 rounded-full border-2 border-white ${s.status === "FREE"
                                     ? "bg-green-500"
                                     : s.status === "BUSY"
-                                    ? "bg-red-500"
-                                    : "bg-gray-400"
-                                }`}
+                                      ? "bg-red-500"
+                                      : "bg-gray-400"
+                                  }`}
                               />
                             )}
                           </div>
@@ -592,12 +616,26 @@ const getRingColor = (role: string, status: string) => {
                       <td className="px-6 py-5 text-sm text-gray-700 text-right tabular-nums">
                         {s.active_jobs ?? "-"}
                       </td>
+                      <td className="px-6 py-5 text-right">
+                        {s.user_id !== user?.id && (
+                          <button
+                            type="button"
+                            onClick={() => setDeleteConfirmId(s.user_id)}
+                            disabled={deletingId === s.user_id}
+                            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50"
+                            title={`Delete ${s.display_name || s.email}`}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            {deletingId === s.user_id ? "Deleting…" : "Delete"}
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   ))}
 
                   {filteredSortedStaff.length === 0 && !loading && (
                     <tr>
-                      <td colSpan={5} className="px-6 py-6 text-sm text-gray-500">
+                      <td colSpan={6} className="px-6 py-6 text-sm text-gray-500">
                         No staff match your filters.
                       </td>
                     </tr>
@@ -608,6 +646,17 @@ const getRingColor = (role: string, status: string) => {
           </div>
         </section>
       </div>
+
+      <ConfirmDangerModal
+        open={deleteConfirmId !== null}
+        title="Delete staff account"
+        description={`Permanently delete ${staff.find((s) => s.user_id === deleteConfirmId)?.email ?? "this account"}? Active jobs will be unassigned. This cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        loading={deletingId !== null}
+        onCancel={() => setDeleteConfirmId(null)}
+        onConfirm={() => deleteConfirmId !== null && deleteStaff(deleteConfirmId)}
+      />
     </main>
   );
 }

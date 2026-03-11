@@ -785,6 +785,58 @@ def push_to_ot2(
         db.commit()
         raise HTTPException(status_code=500, detail=f"OT-2 push failed: {e}")
     
+def get_b2a_result(job_id: str, request: Request, db: OrmSession = Depends(get_db)):
+    """GET /jobs/{job_id}/b2a-result
+
+    Returns the decoded B2A results for a completed job.
+    The "show once" behaviour is enforced purely on the client via sessionStorage.
+    """
+    u = get_current_user(db, request)
+    require_role(u, {"scientist", "admin"})
+
+    j = db.query(Job).filter(Job.id == job_id).first()
+    if not j:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    if j.status != "COMPLETED":
+        return {"available": False}
+
+    # Read result files safely (all are inside the job artifact dir)
+    b2a_dir = settings.artifacts_dir / job_id / "b2a"
+    results_dir = settings.artifacts_dir / job_id / "results"
+
+    decoded_text: str | None = None
+    stdout_log: str | None = None
+    summary: dict = {}
+
+    decoded_path = b2a_dir / "decoded_ascii.txt"
+    if decoded_path.exists():
+        decoded_text = decoded_path.read_text(encoding="utf-8", errors="replace").strip()
+
+    stdout_path = b2a_dir / "b2a_stdout.log"
+    if stdout_path.exists():
+        stdout_log = stdout_path.read_text(encoding="utf-8", errors="replace")
+
+    summary_path = results_dir / "compare_summary.json"
+    if summary_path.exists():
+        try:
+            summary = json.loads(summary_path.read_text(encoding="utf-8"))
+        except Exception:
+            summary = {}
+
+    return {
+        "available": True,
+        "decoded_text": decoded_text,
+        "stdout_log": stdout_log,
+        "match": j.match,
+        "accuracy_percent": summary.get("accuracy_percent"),
+        "matched_bytes": summary.get("matched_bytes"),
+        "expected_len": summary.get("expected_len"),
+        "actual_len": summary.get("actual_len"),
+        "first_mismatch_index": summary.get("first_mismatch_index"),
+    }
+
+
 def job_events(job_id: str, request: Request, db: OrmSession = Depends(get_db)):
     u = get_current_user(db, request)
 

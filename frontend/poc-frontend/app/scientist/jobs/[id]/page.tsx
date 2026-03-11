@@ -17,6 +17,7 @@ import {
   Info,
   Loader2,
   ShieldCheck,
+  Terminal,
   Wrench,
 } from "lucide-react";
 
@@ -184,14 +185,33 @@ function LabJobInner() {
   const [selectedProtocol, setSelectedProtocol] = useState<ProtocolKey>("brick_mix_sa_ot2");
   const [generatedProtocols, setGeneratedProtocols] = useState<Array<{ filename: string; size_bytes: number; generated_at: string }>>([]);
   const [selectedGeneratedProtocol, setSelectedGeneratedProtocol] = useState<string>("");
+  const [resultData, setResultData] = useState<any>(null);
+  const [showLog, setShowLog] = useState(false);
+  const [logAlreadySeen, setLogAlreadySeen] = useState(false);
 
   const greetingName = useMemo(() => {
     return user?.display_name || user?.email || "User";
   }, [user]);
 
+  const sessionKey = `b2a_log_viewed_${id}`;
+
+  async function fetchB2aResult() {
+    try {
+      const data = await apiFetch(`/jobs/${id}/b2a-result`);
+      if (data?.available) {
+        setResultData(data);
+        // Mark the log as seen so it disappears after a refresh
+        sessionStorage.setItem(sessionKey, "1");
+      }
+    } catch {
+      // non-critical — silently ignore
+    }
+  }
+
   useEffect(() => {
     let cancelled = false;
-
+    // Check before the fetch so the log is hidden on reload
+    setLogAlreadySeen(!!sessionStorage.getItem(sessionKey));
 
     (async () => {
       setErr(null);
@@ -204,6 +224,9 @@ function LabJobInner() {
           setJob(jobData);
           setGeneratedProtocols(protocolData);
           if (protocolData.length > 0) setSelectedGeneratedProtocol(protocolData[0].filename);
+          if (jobData?.status === "COMPLETED") {
+            fetchB2aResult();
+          }
         }
       } catch (e: any) {
         if (!cancelled) setErr(e.message);
@@ -256,6 +279,9 @@ function LabJobInner() {
       const data = await res.json();
       setMsg(`Completed: ${data.status}`);
       await refreshJob();
+      if (data.status === "COMPLETED") {
+        await fetchB2aResult();
+      }
     } catch (e: any) {
       setErr(e.message);
     } finally {
@@ -428,6 +454,81 @@ function LabJobInner() {
         {pushMsg && (
           <div className="mt-6 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 shadow-sm">
             {pushMsg}
+          </div>
+        )}
+
+        {/* Show-once B2A result panel */}
+        {resultData?.available && (
+          <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-6 shadow-sm">
+            <div className="flex flex-wrap items-center gap-3">
+              {resultData.match ? (
+                <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+              ) : (
+                <Info className="h-5 w-5 text-red-500" />
+              )}
+              <h2 className="text-lg font-bold text-emerald-900">Decoding Result</h2>
+              {!logAlreadySeen && (
+                <span className="ml-auto rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
+                  Pipeline log visible once — hidden after refresh
+                </span>
+              )}
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="rounded-xl bg-white p-3 shadow-sm">
+                <div className="text-xs text-gray-500">Match</div>
+                <div className={`mt-1 font-semibold ${resultData.match ? "text-emerald-700" : "text-red-600"}`}>
+                  {resultData.match ? "✅ Match" : "❌ Mismatch"}
+                </div>
+              </div>
+              <div className="rounded-xl bg-white p-3 shadow-sm">
+                <div className="text-xs text-gray-500">Accuracy</div>
+                <div className="mt-1 font-semibold text-gray-900">
+                  {typeof resultData.accuracy_percent === "number"
+                    ? `${resultData.accuracy_percent.toFixed(2)}%`
+                    : "—"}
+                </div>
+              </div>
+              <div className="rounded-xl bg-white p-3 shadow-sm">
+                <div className="text-xs text-gray-500">Bytes matched</div>
+                <div className="mt-1 font-semibold text-gray-900">
+                  {resultData.matched_bytes ?? "—"} / {resultData.expected_len ?? "—"}
+                </div>
+              </div>
+              {resultData.first_mismatch_index != null && (
+                <div className="rounded-xl bg-white p-3 shadow-sm">
+                  <div className="text-xs text-gray-500">First mismatch</div>
+                  <div className="mt-1 font-semibold text-red-600">byte {resultData.first_mismatch_index}</div>
+                </div>
+              )}
+            </div>
+
+            {resultData.decoded_text && (
+              <div className="mt-4 rounded-xl bg-white p-4 shadow-sm">
+                <div className="text-xs font-medium text-gray-500 mb-1">Decoded text</div>
+                <div className="font-mono text-lg font-bold text-gray-900 break-all">
+                  {resultData.decoded_text}
+                </div>
+              </div>
+            )}
+
+            {resultData.stdout_log && !logAlreadySeen && (
+              <div className="mt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowLog((v) => !v)}
+                  className="inline-flex items-center gap-2 text-xs font-semibold text-emerald-700 hover:underline"
+                >
+                  <Terminal className="h-3.5 w-3.5" />
+                  {showLog ? "Hide" : "Show"} pipeline log
+                </button>
+                {showLog && (
+                  <pre className="mt-2 max-h-72 overflow-auto rounded-xl bg-gray-900 p-4 text-xs text-green-300 whitespace-pre-wrap">
+                    {resultData.stdout_log}
+                  </pre>
+                )}
+              </div>
+            )}
           </div>
         )}
 

@@ -86,7 +86,6 @@ class Job(Base):
     ot2_run_status = Column(String, nullable=True)   # RUNNING / DONE / FAILED etc.
 
 
-
 class Notification(Base):
     __tablename__ = "notifications"
 
