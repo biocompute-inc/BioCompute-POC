@@ -9,7 +9,8 @@ jobs:
     runs-on: self-hosted  # <--- This tells GitHub to talk to your Pi
     steps:
       - name: Fix Workspace Permissions
-        run: sudo chown -R $USER:$USER ${{ github.workspace }} || true
+        # Uses a temporary root docker container to change ownership back to the runner's UID/GID
+        run: docker run --rm -v ${{ github.workspace }}:/workspace alpine chown -R $(id -u):$(id -g) /workspace
 
       - name: Checkout code
         uses: actions/checkout@v4
