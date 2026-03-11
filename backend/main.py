@@ -18,7 +18,12 @@ app = FastAPI(title="BioCompute POC Backend")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=[
+        "http://localhost", 
+        "http://localhost:80",
+        "http://127.0.0.1",
+        "http://127.0.0.1:80"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
