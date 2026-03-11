@@ -31,4 +31,4 @@ jobs:
       - name: Build and Run
         run: |
           docker compose -f docker-compose.yml --profile prod up -d --build
-          docker compose -f docker-compose.yml restart poc_nginx
+          docker restart poc_nginx
