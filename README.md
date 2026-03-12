@@ -1,50 +1,56 @@
 # BioCompute OT-2 + B2A POC
 
-End-to-end proof-of-concept integrating:
-- User file upload
-- Plaintext conversion
-- OT-2 protocol generation
-- Wet-lab sequencing
-- BAM decoding via B2A
-- Result comparison and verification
+End-to-end proof-of-concept that encodes a file into DNA, runs it through an Opentrons OT-2 liquid-handler, sequences the result, and verifies the decoded output matches the original.
+
+## How It Works
+
+1. **User** uploads a file → backend converts it to a Base64 plaintext representation
+2. Backend generates an OT-2 liquid-handling protocol
+3. **Scientist** is notified, downloads the protocol, and runs it on the OT-2
+4. Sequencing is performed and the resulting BAM file is uploaded
+5. B2A decodes the BAM → ASCII
+6. Backend compares ASCII vs original plaintext → job marked **SUCCESS** or **FAILED**
 
 ## Roles
-- **User**: uploads file, views job status and results
-- **Scientist/Admin**: runs OT-2 protocol, uploads BAM, completes job
 
-## High-level Flow
-1. User uploads file
-2. Backend converts file → plaintext (Base64)
-3. OT-2 protocol generated
-4. Scientist/Admin notified
-5. Protocol run on OT-2 + sequencing
-6. BAM uploaded
-7. B2A converts BAM → ASCII
-8. Backend compares ASCII vs plaintext
-9. Job marked SUCCESS / FAILED
+| Role | What they can do |
+|------|-----------------|
+| **User** | Upload files, create jobs, view status and results |
+| **Scientist** | Download protocols, upload BAM files, mark jobs complete |
+| **Admin** | Everything above, plus manage users and view analytics |
 
 ## Tech Stack
+
 - **Backend**: FastAPI + SQLAlchemy + Uvicorn (port 8000)
-- **Frontend**: Next.js 16 + React 19 + Tailwind (port 3000)
-- **Auth**: Cookie-based sessions
+- **Frontend**: Next.js + React + Tailwind CSS (port 3000)
+- **Reverse proxy**: nginx (port 80, internal only)
+- **Auth**: Session cookies (HttpOnly, SameSite=Lax) + CSRF double-submit
 - **Lab Automation**: Opentrons OT-2
-- **Sequencing Decode**: B2A (via Conda `modkit_env`)
-- **Database**: PostgreSQL (or SQLite for local dev)
+- **Sequencing Decode**: B2A (runs inside a Conda `modkit_env` environment)
+- **Database**: PostgreSQL (production) / SQLite (local dev)
 - **Containerisation**: Docker + Docker Compose
+- **Production tunnel**: Cloudflare Tunnel (optional, `prod` profile)
 
 ## Project Structure
+
 ```
-biocompute-poc/
-├── backend/          # FastAPI app + Alembic migrations
-├── frontend/         # Next.js frontend
-│   └── poc-frontend/
-├── tools/            # Git submodules (B2A, OT2 protocols, references)
-└── artifacts/        # Job outputs (git-ignored)
+BioCompute-POC/
+├── backend/               # FastAPI app, Alembic migrations, services
+├── frontend/
+│   └── poc-frontend/      # Next.js app (App Router)
+├── tools/                 # Git submodules
+│   ├── B2A/               # BAM-to-ASCII decoder
+│   ├── OT2-BRICK-MIX-PROTOCOLS/   # OT-2 protocol scripts
+│   └── references/        # Reference FASTA for B2A
+├── artifacts/             # Job outputs — git-ignored, auto-created
+├── docker-compose.yml
+├── docker-compose.override.yml   # Adds port 80:80 and frontend hot-reload for local dev
+└── nginx.conf
 ```
 
 ---
 
-## Cloning (required before anything else)
+## 1. Clone the Repository
 
 ```bash
 git clone https://github.com/biocompute-inc/BioCompute-POC.git
@@ -52,25 +58,26 @@ cd BioCompute-POC
 git submodule update --init --recursive
 ```
 
-The following submodules are **mandatory** — skipping this step will break pipeline execution:
-- `tools/OT2-BRICK-MIX-PROTOCOLS`
-- `tools/B2A`
-- `tools/references`
+> **Required.** Skipping the submodule step will break the B2A pipeline and protocol generation.
 
 ---
 
-## Environment Files
-
-Create the two `.env` files before starting any service.
+## 2. Create Environment Files
 
 ### `backend/.env`
+
 ```env
+# --- Required ---
 DATABASE_URL=postgresql://user:password@host:5432/dbname
-SESSION_SECRET=change-me-to-a-long-random-string
+SESSION_SECRET=change-me-to-a-long-random-string-min-32-chars
+
+# --- Recommended ---
 FRONTEND_BASE_URL=http://localhost:3000
 RESET_TOKEN_TTL_MINUTES=30
+ALLOWED_ORIGINS=http://localhost:3000
+SECURE_COOKIES=false       # set to true in production (HTTPS only)
 
-# Optional — defaults work inside the container
+# --- Optional (these defaults work inside Docker) ---
 OT2_REPO_DIR=/app/tools/OT2-BRICK-MIX-PROTOCOLS
 B2A_REPO_DIR=/app/tools/B2A
 ARTIFACTS_DIR=/app/artifacts
@@ -78,34 +85,33 @@ B2A_REFERENCE_FASTA=/app/tools/references/reference.fasta
 B2A_BITWIDTH=8
 ```
 
-### `frontend/poc-frontend/.env.local`
+For **local dev with SQLite** (no Postgres needed):
+
 ```env
-NEXT_PUBLIC_API_URL=http://localhost:8000
+DATABASE_URL=sqlite:///./dev.db
 ```
 
-> **Note:** `DATABASE_URL` is required. The backend will refuse to start without it.
+### `frontend/poc-frontend/.env.local`
+
+```env
+NEXT_PUBLIC_API_BASE=http://localhost:8000
+```
+
+> In production behind nginx the frontend uses a relative `/api` path via the reverse proxy. For local dev, point directly at the backend port.
 
 ---
 
-## Running with Docker (Recommended)
+## 3. Running the Stack
 
-Docker Compose starts both the backend (FastAPI) and the frontend (Next.js) together. Instructions differ slightly per platform.
+### Option A — Docker Compose (recommended for all platforms)
 
-### Linux
-
-Install Docker Engine and the Compose plugin if you haven't already:
-
-```bash
-sudo apt update
-sudo apt install -y docker.io docker-compose-plugin
-sudo usermod -aG docker $USER   # allows running docker without sudo (re-login after)
-```
-
-Start the stack from the repo root:
+This is the standard way to run the project. One command starts nginx, the backend, and the frontend:
 
 ```bash
 docker compose up --build
 ```
+
+Docker Compose automatically picks up `docker-compose.override.yml` when it exists, which adds port `80:80` on nginx and enables frontend hot-reload via volume mounts.
 
 To run in the background:
 
@@ -113,43 +119,108 @@ To run in the background:
 docker compose up --build -d
 ```
 
-To stop:
+To stop everything:
 
 ```bash
 docker compose down
+```
+
+Once running, open:
+
+| Service | URL |
+|---------|-----|
+| App (via nginx) | http://localhost |
+| Frontend direct | http://localhost:3000 |
+| Backend API | http://localhost:8000 |
+| Swagger docs | http://localhost:8000/docs |
+
+---
+
+### Option B — Local Development (no Docker)
+
+Use this when you want faster iteration without container rebuilds.
+
+#### Backend
+
+Requires **Python 3.10+**.
+
+```bash
+cd backend
+
+# Create and activate a virtual environment
+python -m venv venv
+source venv/bin/activate          # Linux / macOS / WSL
+# .\venv\Scripts\Activate.ps1     # Windows PowerShell
+
+pip install -r requirements.txt
+
+# Run with auto-reload
+uvicorn main:app --reload --port 8000
+```
+
+- Database tables are created automatically on first start.
+- The B2A pipeline (`modkit_env`) is managed by Conda inside the container. Running it locally requires Conda/Miniconda installed and `tools/B2A` cloned.
+
+#### Frontend
+
+Requires **Node.js 18+**.
+
+```bash
+cd frontend/poc-frontend
+npm install
+npm run dev
+```
+
+The dev server starts on http://localhost:3000 with hot-reload enabled.
+
+---
+
+## 4. Platform-Specific Notes
+
+### Linux
+
+Install Docker and the Compose plugin if you haven't already:
+
+```bash
+sudo apt update && sudo apt install -y docker.io docker-compose-plugin
+sudo usermod -aG docker $USER   # log out and back in after this
+```
+
+Then run from the repo root:
+
+```bash
+docker compose up --build
 ```
 
 ---
 
 ### Windows
 
-**Option A — Docker Desktop (easiest)**
+**Docker Desktop (recommended)**
 
-1. Download and install [Docker Desktop for Windows](https://www.docker.com/products/docker-desktop/).
-2. During installation, enable the **WSL 2 backend** (recommended over Hyper-V).
-3. Open **Docker Desktop** and wait until it shows "Engine running".
-4. Open a terminal (PowerShell, Command Prompt, or Windows Terminal) at the repo root:
+1. Install [Docker Desktop for Windows](https://www.docker.com/products/docker-desktop/) with the **WSL 2 backend** enabled.
+2. Open Docker Desktop and wait for "Engine running".
+3. In PowerShell / Windows Terminal at the repo root:
 
 ```powershell
 docker compose up --build
 ```
 
-**Option B — WSL 2 only (no Docker Desktop)**
+**WSL 2 only (no Docker Desktop)**
 
-If you are already running the project inside WSL 2 (Ubuntu/Debian), follow the Linux instructions above inside your WSL terminal. Docker installed inside WSL 2 works identically to native Linux.
+If you're developing inside a WSL 2 Ubuntu/Debian distro, follow the Linux instructions above inside your WSL terminal — it works identically.
 
 **Windows-specific notes:**
-- The backend Dockerfile automatically fixes Windows-style line endings (`\r\n → \n`) in shell scripts via `sed`, so you do not need to do this manually.
-- Volume mounts use Linux paths inside the container regardless of your host OS — this is handled automatically by Docker Desktop.
-- If you cloned on Windows and see script errors, run `git config --global core.autocrlf input` before cloning next time.
+- The backend Dockerfile strips Windows line endings (`\r\n → \n`) from shell scripts automatically via `sed`. You don't need to do this manually.
+- If you cloned on Windows and still see line-ending errors, run `git config --global core.autocrlf input` and re-clone.
 
 ---
 
 ### macOS
 
 1. Install [Docker Desktop for Mac](https://www.docker.com/products/docker-desktop/) (Apple Silicon or Intel).
-2. Open Docker Desktop and wait for the engine to start.
-3. In a terminal at the repo root:
+2. Start Docker Desktop and wait for the engine.
+3. From the repo root:
 
 ```bash
 docker compose up --build
@@ -159,129 +230,101 @@ docker compose up --build
 
 ### Raspberry Pi (ARM64)
 
-The Raspberry Pi runs on ARM64 (aarch64). Most images used in this project have ARM64 variants, but there are a few things to be aware of.
+**Supported hardware:** Raspberry Pi 4 or 5 running **64-bit Raspberry Pi OS (Bookworm)**. The B2A pipeline requires a 64-bit OS — 32-bit images will not work.
 
-**Supported: Raspberry Pi 4 / 5 running 64-bit Raspberry Pi OS (Bookworm)**
-
-Install Docker:
+#### Install Docker
 
 ```bash
 curl -fsSL https://get.docker.com | sh
-sudo usermod -aG docker $USER   # re-login after this
-```
-
-Install the Compose plugin:
-
-```bash
+sudo usermod -aG docker $USER   # log out and back in after this
 sudo apt install -y docker-compose-plugin
 ```
 
-Start the stack:
+#### Start the stack
 
 ```bash
 docker compose up --build
 ```
 
-**ARM64 caveats:**
+#### ARM64 compatibility
 
-| Component | ARM64 status |
-|-----------|-------------|
-| `node:20-alpine` (frontend) | Native ARM64 image available — works out of the box |
-| `continuumio/miniconda3` (backend) | The `latest` tag **may not have an ARM64 variant**. If the build fails, replace the base image in `backend/DockerFile` with `mambaorg/micromamba:latest` or use the `linux/arm64` platform flag shown below |
+| Image | ARM64 status |
+|-------|-------------|
+| `node:20-alpine` (frontend) | ✅ Native ARM64 — works out of the box |
+| `continuumio/miniconda3` (backend) | ⚠️ May not have an ARM64 variant on older tags |
 
-If `continuumio/miniconda3` fails on ARM, edit the first line of `backend/DockerFile`:
+If the backend build fails with a platform error, edit the first line of `backend/DockerFile`:
 
 ```dockerfile
-# Replace this:
+# Replace:
 FROM continuumio/miniconda3:latest
 
-# With this (ARM64-compatible):
+# With (ARM64-compatible):
 FROM mambaorg/micromamba:latest
 ```
 
-Alternatively, force Docker to emulate `linux/amd64`:
+Alternatively, force QEMU emulation (slower but always works):
 
 ```bash
 docker compose build --platform linux/amd64
 docker compose up
 ```
 
-> Emulation via QEMU works but is significantly slower. Building natively with an ARM64-compatible image is preferred.
-
-**Raspberry Pi 3 (32-bit OS):** Not recommended. The B2A pipeline (`ont-modkit`) requires 64-bit and will fail on a 32-bit OS image.
-
 ---
 
-## Verifying the Stack
+## 5. Production Deployment (Cloudflare Tunnel)
 
-Once `docker compose up` completes, open:
+Production uses a Cloudflare Tunnel to expose the app without opening inbound ports. The tunnel runs as an extra Docker service under the `prod` profile.
 
-| Service | URL |
-|---------|-----|
-| Frontend | http://localhost:3000 |
-| Backend API | http://localhost:8000 |
-| API docs (Swagger) | http://localhost:8000/docs |
+Add to `backend/.env`:
 
----
-
-## Running Locally (Without Docker)
-
-### Backend
-
-Requires Python 3.10+.
-
-```bash
-cd backend
-python -m venv venv
-
-# Linux / macOS / WSL
-source venv/bin/activate
-
-# Windows (PowerShell)
-.\venv\Scripts\Activate.ps1
-
-pip install -r requirements.txt
-uvicorn main:app --reload --port 8000
+```env
+TUNNEL_TOKEN=your-cloudflare-tunnel-token
+SECURE_COOKIES=true
+ALLOWED_ORIGINS=https://your-domain.com
+FRONTEND_BASE_URL=https://your-domain.com
 ```
 
-- Database tables are created automatically on first run.
-- For SQLite (quick local test), set `DATABASE_URL=sqlite:///./dev.db` in `backend/.env`.
-
-### Frontend
-
-Requires Node.js 18+.
+Start with the `prod` profile to include the tunnel container:
 
 ```bash
-cd frontend/poc-frontend
-npm install
-npm run dev
+TUNNEL_TOKEN=your-token docker compose --profile prod up --build -d
 ```
 
----
-
-## Using the App
-
-1. Start the backend on port 8000.
-2. Start the frontend on port 3000.
-3. As a **User**: upload a file to create a job.
-4. As a **Scientist/Admin**: download the OT-2 protocol, run sequencing, and upload the resulting BAM file.
-5. View the comparison result in the job detail view.
+> The nginx service does **not** expose port 80 to the host in this mode — traffic comes in through the Cloudflare edge only.
 
 ---
 
-## Useful Docker Commands
+## 6. Useful Commands
 
 ```bash
-# Rebuild a single service after code changes
+# Rebuild and restart a single service
 docker compose up --build backend
 
-# View logs for a specific service
+# Tail logs for a service
 docker compose logs -f backend
 docker compose logs -f frontend
 
 # Open a shell inside the running backend container
 docker exec -it poc_backend bash
 
-# Stop and remove containers + volumes
+# Run a one-off Alembic migration
+docker exec -it poc_backend bash -c "cd /app && alembic upgrade head"
+
+# Stop containers and remove volumes
 docker compose down -v
 ```
+
+---
+
+## 7. First-Time Admin Setup
+
+The database starts empty with no users. Create the first admin account via the backend API directly:
+
+```bash
+curl -X POST http://localhost:8000/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@example.com","password":"yourpassword","role":"admin","display_name":"Admin"}'
+```
+
+Or use the Swagger UI at http://localhost:8000/docs → `POST /auth/register`.
