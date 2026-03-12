@@ -12,6 +12,63 @@ export function getCsrfToken(): string {
   return match ? decodeURIComponent(match[1]) : "";
 }
 
+/**
+ * Maps known backend error payloads to friendly UI messages, while logging
+ * the raw technical detail to the browser console for debugging.
+ *
+ * Backend errors can arrive as:
+ *   • JSON  { "detail": "..." }
+ *   • Plain text  "Some error"
+ *   • HTTP status with no body
+ */
+export function parseError(err: unknown): string {
+  const raw = err instanceof Error ? err.message : String(err);
+
+  // Always log the full detail for developers
+  console.error("[BioCompute error]", raw);
+
+  // Try to parse a JSON body that looks like { "detail": "..." }
+  let detail = raw;
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed?.detail) detail = String(parsed.detail);
+  } catch {
+    // raw was plain text — use as-is
+  }
+
+  // Map known technical phrases to human-friendly messages
+  const lower = detail.toLowerCase();
+  if (lower.includes("csrf token missing") || lower.includes("csrf token mismatch"))
+    return "Your session token expired. Please refresh the page and try again.";
+  if (lower.includes("not logged in") || lower.includes("invalid session") || lower.includes("session expired"))
+    return "You are not logged in. Please sign in and try again.";
+  if (lower.includes("invalid credentials"))
+    return "Incorrect email or password. Please try again.";
+  if (lower.includes("email already registered") || lower.includes("email already exists"))
+    return "An account with that email already exists.";
+  if (lower.includes("password must be at least"))
+    return "Password is too short — must be at least 6 characters.";
+  if (lower.includes("password too long"))
+    return "Password is too long — maximum 24 characters.";
+  if (lower.includes("invalid email"))
+    return "Please enter a valid email address.";
+  if (lower.includes("forbidden") || lower.includes("not allowed") || lower.includes("not assigned"))
+    return "You don't have permission to do that.";
+  if (lower.includes("too many") || lower.includes("rate limit"))
+    return "Too many attempts. Please wait a moment and try again.";
+  if (lower.includes("not found"))
+    return "The requested item could not be found.";
+  if (lower.includes("job cannot be deleted"))
+    return "This job can't be deleted in its current state.";
+  if (lower.includes("protocol file not found"))
+    return "Protocol file not found. Please generate a protocol first.";
+  if (lower.includes("network") || lower.includes("failed to fetch"))
+    return "Network error. Please check your connection and try again.";
+
+  // Fall back to the detail string if nothing matched (still human-readable)
+  return detail.length > 120 ? "An unexpected error occurred. Please try again." : detail;
+}
+
 export async function apiFetch(path: string, options: RequestInit = {}) {
   const method = (options.method ?? "GET").toUpperCase();
 

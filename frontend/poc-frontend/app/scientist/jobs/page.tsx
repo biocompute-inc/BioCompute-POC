@@ -4,7 +4,7 @@
 import { useAuth } from "@/components/AuthProvider";
 import Loading from "@/components/Loading";
 import { RequireRole } from "@/components/RequireAuth";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, parseError } from "@/lib/api";
 import Link from "next/link";
 import Image from "next/image";
 import scientistAvatar from "@/app/assets/scientistAvatar.png";
@@ -83,7 +83,7 @@ function ScientistJobsInner() {
       const data = await apiFetch("/scientist/jobs");
       setJobs(data);
     } catch (e: any) {
-      setErr(e.message);
+      setErr(parseError(e));
     } finally {
       setLoading(false);
     }
@@ -99,7 +99,7 @@ function ScientistJobsInner() {
         const data = await apiFetch("/scientist/jobs");
         if (!cancelled) setJobs(data);
       } catch (e: any) {
-        if (!cancelled) setErr(e.message);
+        if (!cancelled) setErr(parseError(e));
       } finally {
         if (!cancelled) setLoading(false);
       }

@@ -4,7 +4,7 @@
 
 import { RequireRole } from "@/components/RequireAuth";
 import Loading from "@/components/Loading";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, getCsrfToken, parseError } from "@/lib/api";
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -150,7 +150,7 @@ function AdminDashboardInner() {
       setStaff(staffData.staff);
       setSummary(staffData.summary);
     } catch (e: any) {
-      setErr(e.message);
+      setErr(parseError(e));
     } finally {
       setLoading(false);
     }
@@ -164,11 +164,12 @@ function AdminDashboardInner() {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE}/admin/users/${userId}`, {
         method: "DELETE",
         credentials: "include",
+        headers: { "X-CSRF-Token": getCsrfToken() },
       });
       if (!res.ok) throw new Error(await res.text());
       await load();
     } catch (e: any) {
-      setErr(e.message);
+      setErr(parseError(e));
     } finally {
       setDeletingId(null);
     }
@@ -190,7 +191,7 @@ function AdminDashboardInner() {
           setSummary(staffData.summary);
         }
       } catch (e: any) {
-        if (!cancelled) setErr(e.message);
+        if (!cancelled) setErr(parseError(e));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -595,10 +596,10 @@ function AdminDashboardInner() {
                             {s.role?.toLowerCase() !== "admin" && (
                               <span
                                 className={`absolute -bottom-1 -right-1 h-2 w-2 rounded-full border-2 border-white ${s.status === "FREE"
-                                    ? "bg-green-500"
-                                    : s.status === "BUSY"
-                                      ? "bg-red-500"
-                                      : "bg-gray-400"
+                                  ? "bg-green-500"
+                                  : s.status === "BUSY"
+                                    ? "bg-red-500"
+                                    : "bg-gray-400"
                                   }`}
                               />
                             )}

@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, parseError } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import DnaVaultImage from "@/app/assets/DeviceEditedFinalNoBG.png"
@@ -37,7 +37,7 @@ export default function RegisterPage() {
       });
       router.push("/login");
     } catch (err: any) {
-      setError(err.message);
+      setError(parseError(err));
     }
   }
 

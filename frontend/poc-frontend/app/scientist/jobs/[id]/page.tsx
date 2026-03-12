@@ -4,7 +4,7 @@
 import { RequireRole } from "@/components/RequireAuth";
 import Loading from "@/components/Loading";
 import { useAuth } from "@/components/AuthProvider";
-import { apiFetch, getCsrfToken } from "@/lib/api";
+import { apiFetch, getCsrfToken, parseError } from "@/lib/api";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -229,7 +229,7 @@ function LabJobInner() {
           }
         }
       } catch (e: any) {
-        if (!cancelled) setErr(e.message);
+        if (!cancelled) setErr(parseError(e));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -284,7 +284,7 @@ function LabJobInner() {
         await fetchB2aResult();
       }
     } catch (e: any) {
-      setErr(e.message);
+      setErr(parseError(e));
     } finally {
       setUploading(false);
     }
@@ -304,7 +304,7 @@ function LabJobInner() {
       setJob((prev: any) => (prev ? { ...prev, status: data.status } : prev));
       setMsg("Job marked completed.");
     } catch (e: any) {
-      setErr(e.message);
+      setErr(parseError(e));
     } finally {
       setCompleting(false);
     }
@@ -321,7 +321,7 @@ function LabJobInner() {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE}/jobs/${id}/generate-protocol`, {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-CSRF-Token": getCsrfToken() },
         body: JSON.stringify({ protocol_key: protocolKey }),
       });
       if (!res.ok) throw new Error(await res.text());
@@ -330,7 +330,7 @@ function LabJobInner() {
       await refreshJob();
       await fetchGeneratedProtocols();
     } catch (e: any) {
-      setErr(e.message);
+      setErr(parseError(e));
     } finally {
       setGenerating(false);
     }
@@ -348,7 +348,7 @@ function LabJobInner() {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE}/jobs/${id}/push-to-ot2`, {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-CSRF-Token": getCsrfToken() },
         body: JSON.stringify({ protocol_filename: filename }),
       });
       if (!res.ok) throw new Error(await res.text());
@@ -356,7 +356,7 @@ function LabJobInner() {
       setPushMsg(data?.message || `Protocol "${filename}" pushed to OT-2 (placeholder).`);
       await refreshJob();
     } catch (e: any) {
-      setErr(e.message);
+      setErr(parseError(e));
     } finally {
       setPushing(false);
     }
@@ -369,7 +369,7 @@ function LabJobInner() {
       await handleDownload(`/jobs/${id}/protocol/${filename}`, filename);
       setMsg(`Protocol "${filename}" downloaded.`);
     } catch (e: any) {
-      setErr(e.message);
+      setErr(parseError(e));
     }
   }
 
@@ -661,7 +661,7 @@ function LabJobInner() {
                         );
                         setMsg("File downloaded.");
                       } catch (e: any) {
-                        setErr(e.message);
+                        setErr(parseError(e));
                       }
                     }}
                     className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-800"

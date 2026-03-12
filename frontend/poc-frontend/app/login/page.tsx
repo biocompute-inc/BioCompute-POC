@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import { apiFetch } from "@/lib/api"; // Keep your existing imports
+import { apiFetch, parseError } from "@/lib/api"; // Keep your existing imports
 import { useAuth } from "@/components/AuthProvider";
 import { useRouter } from "next/navigation";
 import { Dna, Mail, Lock, LogIn } from "lucide-react";
@@ -42,7 +42,7 @@ export default function LoginPage() {
         router.push("/user/dashboard");
       }
     } catch (err: any) {
-      setError(err.message || "Something went wrong. Please try again.");
+      setError(parseError(err));
     } finally {
       setIsLoading(false);
     }

@@ -3,7 +3,7 @@
 
 import { RequireRole } from "@/components/RequireAuth";
 import { useState } from "react";
-import { getCsrfToken } from "@/lib/api";
+import { getCsrfToken, parseError } from "@/lib/api";
 
 export default function NewJobPage() {
   return (
@@ -45,7 +45,7 @@ function NewJobInner() {
       setMsg(`Created job: ${data.job_id}`);
       window.location.href = `/user/jobs/${data.job_id}`;
     } catch (e: any) {
-      setErr(e.message);
+      setErr(parseError(e));
     } finally {
       setLoading(false);
     }

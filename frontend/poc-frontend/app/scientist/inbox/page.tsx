@@ -3,7 +3,7 @@
 
 import { RequireRole } from "@/components/RequireAuth";
 import Loading from "@/components/Loading";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, parseError } from "@/lib/api";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -64,7 +64,7 @@ function InboxInner() {
         const data = await apiFetch("/notifications");
         if (!cancelled) setItems(data);
       } catch (e: any) {
-        if (!cancelled) setErr(e.message);
+        if (!cancelled) setErr(parseError(e));
       } finally {
         if (!cancelled) setLoading(false);
       }

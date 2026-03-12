@@ -3,7 +3,7 @@
 
 import { RequireRole } from "@/components/RequireAuth";
 import Loading from "@/components/Loading";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, parseError } from "@/lib/api";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import ConfirmDangerModal from "@/components/ConfirmDangerModal";
@@ -144,7 +144,7 @@ function JobDetailInner() {
         const data = await apiFetch(`/jobs/${id}`);
         if (!cancelled) setJob(data);
       } catch (e: any) {
-        if (!cancelled) setErr(e.message);
+        if (!cancelled) setErr(parseError(e));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -174,7 +174,7 @@ function JobDetailInner() {
       }, 1200);
 
     } catch (e: any) {
-      setErr(e.message);
+      setErr(parseError(e));
     } finally {
       setDeleting(false);
       setShowDeleteConfirm(false);
@@ -333,7 +333,7 @@ function JobDetailInner() {
                         );
                         setMsg("Protocol downloaded.");
                       } catch (e: any) {
-                        setErr(e.message);
+                        setErr(parseError(e));
                       }
                     }}
                     className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-800"
@@ -360,7 +360,7 @@ function JobDetailInner() {
                         );
                         setMsg("File downloaded.");
                       } catch (e: any) {
-                        setErr(e.message);
+                        setErr(parseError(e));
                       }
                     }}
                     className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-800"

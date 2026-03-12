@@ -3,7 +3,7 @@
 
 import { RequireRole } from "@/components/RequireAuth";
 import { useAuth } from "@/components/AuthProvider";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, getCsrfToken, parseError } from "@/lib/api";
 import Link from "next/link";
 import Image from "next/image"
 import avator1 from "@/app/assets/avator1.png"
@@ -278,6 +278,7 @@ function DashboardInner() {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE}/auth/delete-account`, {
         method: "POST",
         credentials: "include",
+        headers: { "X-CSRF-Token": getCsrfToken() },
       });
 
       if (!res.ok) throw new Error(await res.text());
@@ -285,7 +286,7 @@ function DashboardInner() {
       await logout();
       window.location.href = "/login";
     } catch (e: any) {
-      setErr(e.message);
+      setErr(parseError(e));
     } finally {
       setDeleting(false);
       setShowDeleteConfirm(false);
@@ -311,7 +312,7 @@ function DashboardInner() {
           setFiles(f);
         }
       } catch (e: any) {
-        if (!cancelled) setErr(e.message);
+        if (!cancelled) setErr(parseError(e));
       }
     })();
 

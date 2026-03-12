@@ -2,7 +2,7 @@
 "use client";
 
 import { RequireRole } from "@/components/RequireAuth";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, parseError } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
@@ -47,7 +47,7 @@ function AdminCreateUserInner() {
       setDisplayName("");
       setRole("scientist");
     } catch (err: any) {
-      setError(err.message);
+      setError(parseError(err));
     }
   }
   const { user, logout } = useAuth();
