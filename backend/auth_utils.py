@@ -1,5 +1,6 @@
 from __future__ import annotations
 import datetime as dt
+import os
 import secrets
 from typing import Optional
 
@@ -36,12 +37,14 @@ def create_session(db: Session, user_id: int, days_valid: int = 7) -> str:
 
 def set_session_cookie(resp: Response, token: str):
     # HttpOnly cookie => JS can't read it; browser auto-sends it.
+    # SECURE_COOKIES env-var should be "true" in production (behind HTTPS).
+    secure = os.getenv("SECURE_COOKIES", "false").lower() == "true"
     resp.set_cookie(
         key=SESSION_COOKIE_NAME,
         value=token,
         httponly=True,
         samesite="lax",
-        secure=False,  # set True behind HTTPS later
+        secure=secure,
         max_age=7 * 24 * 3600,
     )
 

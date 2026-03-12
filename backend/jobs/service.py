@@ -102,7 +102,10 @@ def create_job_from_file(
     proto_dir.mkdir(parents=True, exist_ok=True)
 
     # 3) Save uploaded file to disk
-    raw_path = input_dir / (upload.filename or "uploaded.bin")
+    # Sanitize filename: strip any path components to prevent traversal attacks.
+    # e.g. "../../etc/passwd" → "passwd", then kept inside the UUID-scoped input_dir.
+    safe_upload_name = Path(upload.filename or "uploaded.bin").name or "uploaded.bin"
+    raw_path = input_dir / safe_upload_name
     raw_bytes = upload.file.read()
     raw_path.write_bytes(raw_bytes)
 
@@ -393,6 +396,11 @@ def generate_protocol_for_job(
         raise HTTPException(status_code=404, detail="Job not found")
     if not j.plaintext_path:
         raise HTTPException(status_code=400, detail="Input file path not recorded for this job")
+
+    # IDOR: scientists may only operate on jobs assigned to them
+    if u.role == "scientist" and j.assigned_to != u.id:
+        raise HTTPException(status_code=403, detail="Not assigned to this job")
+
     input_path = Path(j.plaintext_path)
     if not input_path.exists():
         raise HTTPException(status_code=400, detail=f"Input file missing: {input_path}")
@@ -446,13 +454,19 @@ def upload_bam(
             status_code=400, detail="Job is not ready for BAM upload (missing plaintext/protocol)."
         )
 
+    # IDOR: scientists may only operate on jobs assigned to them
+    if u.role == "scientist" and j.assigned_to != u.id:
+        raise HTTPException(status_code=403, detail="Not assigned to this job")
+
     job_dir = settings.artifacts_dir / job_id
     bam_dir = job_dir / "bam"
     b2a_dir = job_dir / "b2a"
     results_dir = job_dir / "results"
     bam_dir.mkdir(parents=True, exist_ok=True)
 
-    bam_path = bam_dir / (bam.filename or "input.bam")
+    # Sanitize filename: strip any path components to prevent traversal attacks.
+    safe_bam_name = Path(bam.filename or "input.bam").name or "input.bam"
+    bam_path = bam_dir / safe_bam_name
     with bam_path.open("wb") as f:
         shutil.copyfileobj(bam.file, f)
 
@@ -721,6 +735,10 @@ def push_to_ot2(
     if not j:
         raise HTTPException(status_code=404, detail="Job not found")
 
+    # IDOR: scientists may only operate on jobs assigned to them
+    if u.role == "scientist" and j.assigned_to != u.id:
+        raise HTTPException(status_code=403, detail="Not assigned to this job")
+
     # Resolve + validate the requested protocol file
     safe_name = Path(body.protocol_filename).name
     proto_dir = settings.artifacts_dir / job_id / "protocol"
@@ -797,6 +815,10 @@ def get_b2a_result(job_id: str, request: Request, db: OrmSession = Depends(get_d
     j = db.query(Job).filter(Job.id == job_id).first()
     if not j:
         raise HTTPException(status_code=404, detail="Job not found")
+
+    # IDOR: scientists may only access results for jobs assigned to them
+    if u.role == "scientist" and j.assigned_to != u.id:
+        raise HTTPException(status_code=403, detail="Not assigned to this job")
 
     if j.status != "COMPLETED":
         return {"available": False}

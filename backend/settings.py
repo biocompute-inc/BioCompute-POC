@@ -22,6 +22,12 @@ class Settings:
     b2a_reference_fasta: Path = Path(os.getenv("B2A_REFERENCE_FASTA", "/app/tools/references/reference.fasta"))
     b2a_bitwidth: int = int(os.getenv("B2A_BITWIDTH", "8"))
 
+    # Security settings
+    # Comma-separated list of allowed CORS origins (set in .env for production)
+    allowed_origins: tuple = ()
+    # Set to True in production (behind HTTPS / Cloudflare Tunnel)
+    secure_cookies: bool = False
+
 def get_settings() -> Settings:
     # Use absolute paths starting with /app (your Docker WORKDIR)
     ot2_repo = Path(os.getenv("OT2_REPO_DIR", "/tools/OT2-BRICK-MIX-PROTOCOLS")).resolve()
@@ -55,4 +61,13 @@ def get_settings() -> Settings:
         db_url=db_url,
         frontend_base_url=os.getenv("FRONTEND_BASE_URL", "http://localhost:3000"),
         reset_token_ttl_minutes=int(os.getenv("RESET_TOKEN_TTL_MINUTES", "30")),
+        allowed_origins=tuple(
+            o.strip()
+            for o in os.getenv(
+                "ALLOWED_ORIGINS",
+                "http://localhost,http://localhost:80,http://127.0.0.1,http://127.0.0.1:80",
+            ).split(",")
+            if o.strip()
+        ),
+        secure_cookies=os.getenv("SECURE_COOKIES", "false").lower() == "true",
     )

@@ -46,11 +46,17 @@ settings = get_settings()
 # TODO: Add email verification flow in registration, and add more profile fields (e.g. display name, we already have /profile to update their display name). Consider adding 2FA in the future for enhanced security.
 
 @router.post("/register")
-def register(payload: dict, db: OrmSession = Depends(get_db)):
+def register(payload: dict, request: Request, db: OrmSession = Depends(get_db)):
     """
     Payload: { "email": "...", "password": "...", "role": "user" }
     Only role:user can be registered no other roles can be registered through here.
     """
+    ip = request.client.host if request.client else "unknown"
+
+    # Rate limit: 5 registration attempts per hour per IP
+    if not _rate_limit(db, f"register:ip:{ip}", max_hits=5, window_seconds=3600):
+        raise HTTPException(status_code=429, detail="Too many registration attempts. Try again later.")
+
     email = (payload.get("email") or "").strip().lower()
     password = payload.get("password") or ""
     role = "user"
@@ -84,9 +90,15 @@ def register(payload: dict, db: OrmSession = Depends(get_db)):
 
 
 @router.post("/login") # Login route for users to authenticate and receive a session cookie. Validates credentials and creates a new session on successful login.
-def login(payload: dict, response: Response, db: OrmSession = Depends(get_db)):
+def login(payload: dict, request: Request, response: Response, db: OrmSession = Depends(get_db)):
     email = (payload.get("email") or "").strip().lower()
     password = payload.get("password") or ""
+
+    ip = request.client.host if request.client else "unknown"
+
+    # Rate limit: 10 login attempts per 5 minutes per IP (brute-force protection)
+    if not _rate_limit(db, f"login:ip:{ip}", max_hits=10, window_seconds=300):
+        raise HTTPException(status_code=429, detail="Too many login attempts. Try again later.")
 
     u = db.query(User).filter(User.email == email, User.is_active == True).first()  # noqa: E712
     if not u or not verify_password(password, u.password_hash):
