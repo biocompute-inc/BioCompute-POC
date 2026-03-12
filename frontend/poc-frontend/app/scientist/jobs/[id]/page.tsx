@@ -4,7 +4,7 @@
 import { RequireRole } from "@/components/RequireAuth";
 import Loading from "@/components/Loading";
 import { useAuth } from "@/components/AuthProvider";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, getCsrfToken } from "@/lib/api";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -269,6 +269,7 @@ function LabJobInner() {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE}/jobs/${id}/bam`, {
         method: "POST",
         credentials: "include",
+        headers: { "X-CSRF-Token": getCsrfToken() },
         body: form,
       });
 

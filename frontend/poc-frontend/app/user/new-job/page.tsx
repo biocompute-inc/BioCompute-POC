@@ -3,6 +3,7 @@
 
 import { RequireRole } from "@/components/RequireAuth";
 import { useState } from "react";
+import { getCsrfToken } from "@/lib/api";
 
 export default function NewJobPage() {
   return (
@@ -32,6 +33,7 @@ function NewJobInner() {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE}/jobs/from-file`, {
         method: "POST",
         credentials: "include",
+        headers: { "X-CSRF-Token": getCsrfToken() },
         body: form,
       });
 

@@ -4,8 +4,9 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "";
  * Reads the csrf_token cookie that the backend sets on every GET response.
  * The cookie is intentionally NOT HttpOnly so we can echo it back as a header
  * (double-submit cookie CSRF pattern).
+ * Exported so multipart/form-data uploads (which bypass apiFetch) can use it.
  */
-function getCsrfToken(): string {
+export function getCsrfToken(): string {
   if (typeof document === "undefined") return ""; // SSR guard
   const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/);
   return match ? decodeURIComponent(match[1]) : "";
