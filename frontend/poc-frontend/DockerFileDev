@@ -10,6 +10,11 @@ RUN npm install
 # Copy the rest of the frontend code
 COPY . .
 
+# --- THE FIX GOES HERE ---
+# Create the .next folder in advance and hand the keys of the /app house to 'node'
+RUN mkdir -p /app/.next && chown -R node:node /app
+# -------------------------
+
 # Build for production (lint + type checks suppressed via next.config.ts)
 # RUN npm run build
 

@@ -230,11 +230,11 @@ function JobDetailInner() {
                 <span className="font-mono text-gray-800">{job?.id}</span>
               </span>
 
-              {job?.assigned_to_email && (
+              {job?.assigned_to_name && (
                 <span className="rounded-lg bg-white px-3 py-1 shadow-sm">
                   <span className="text-gray-400">Assigned:</span>{" "}
                   <span className="font-medium text-gray-800">
-                    {job?.assigned_to_email}
+                    {job?.assigned_to_name}
                   </span>
                 </span>
               )}
@@ -290,7 +290,7 @@ function JobDetailInner() {
                 <div className="rounded-xl bg-slate-50 p-3">
                   <div className="text-xs text-gray-500">Scientist Assigned</div>
                   <div className="mt-1 font-mono text-gray-900">
-                    {job?.assigned_to_email ?? "-"}
+                    {job?.assigned_to_name ?? "-"}
                   </div>
                 </div>
 

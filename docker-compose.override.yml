@@ -3,6 +3,12 @@ services:
     ports:
       - "80:80"
   frontend:
+    build:
+      context: ./frontend/poc-frontend
+      dockerfile: DockerFileDev
     volumes:
-      - ./frontend/poc-frontend:/app
+      # 1. Point exactly to the frontend folder, not the project root
+      - ./frontend/poc-frontend:/app  
+      # 2. Keep these to prevent local cache/permission conflicts
       - /app/node_modules
+      - /app/.next
