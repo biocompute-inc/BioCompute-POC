@@ -20,3 +20,6 @@ EXPOSE 3000
 
 # Run in production mode
 CMD ["npm", "run", "start"]
+
+# for dev mode
+# CMD ["npm", "run", "dev"]

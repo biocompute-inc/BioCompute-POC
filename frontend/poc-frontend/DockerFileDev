@@ -1,0 +1,25 @@
+# frontend/poc-frontend/Dockerfile
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install dependencies first for better caching
+COPY package.json package-lock.json ./
+RUN npm install
+
+# Copy the rest of the frontend code
+COPY . .
+
+# Build for production (lint + type checks suppressed via next.config.ts)
+# RUN npm run build
+
+# Switch out of the 'root' user into the 'node' user
+USER node
+
+EXPOSE 3000
+
+# Run in production mode
+# CMD ["npm", "run", "start"]
+
+# for dev mode
+CMD ["npm", "run", "dev"]

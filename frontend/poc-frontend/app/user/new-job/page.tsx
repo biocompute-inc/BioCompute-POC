@@ -57,7 +57,7 @@ function NewJobInner() {
         Create new job
       </h1>
       <p className="text-sm text-gray-500 mb-6">
-        Upload a file. We’ll turn it into work. Machines will do the rest.
+        Upload a TEXT file. We’ll turn it into work. Machines will do the rest.
       </p>
 
       {/* Upload Card */}
@@ -77,7 +77,7 @@ function NewJobInner() {
             {file ? file.name : "Click to upload or drag & drop"}
           </div>
           <div className="mt-1 text-xs text-gray-400">
-            Any valid job input file
+            TEXT file only
           </div>
         </label>
 
